@@ -14,13 +14,14 @@ Authors :
     Lucas Arcamone
 """
 
-import nibabel as ni
-import numpy as np
-import optparse
 import math
+import optparse
 import os
 import shutil
 import subprocess
+
+import nibabel as ni
+import numpy as np
 from scipy.ndimage import binary_erosion
 import nibabel.processing as proc
 
