@@ -16,9 +16,9 @@ Authors :
 
 import math
 import os
-import shutil
 import subprocess
 import sys
+import tempfile
 
 import nibabel
 import nibabel.processing
@@ -171,65 +171,57 @@ def Apply_registration(
     )
 
 
-##  MAIN part
-
-
 def AFI_B1Mapping(MaterialDirectory, Afi_filename, FA90_filename, TR1, TR2):
     # creation of the material directory
-    WIP_directory = os.path.join(MaterialDirectory, "WIP")
-    os.mkdir(WIP_directory)
+    with tempfile.TemporaryDirectory(prefix="AFI_B1Mapping") as WIP_directory:
+        # Creation of b1
+        B1(WIP_directory, Afi_filename, int(TR1), int(TR2))
 
-    # Creation of b1
-    B1(WIP_directory, Afi_filename, int(TR1), int(TR2))
+        # Creation of the eroded mask
+        b1filename = os.path.join(WIP_directory, "b1.nii.gz")
+        maskb1filename = os.path.join(WIP_directory, "mask_b1.nii.gz")
+        maskErodedfilename = os.path.join(WIP_directory, "mask_b1_eroded.nii.gz")
+        GetMask(Afi_filename, maskb1filename, maskErodedfilename)
 
-    # Creation of the eroded mask
-    b1filename = os.path.join(WIP_directory, "b1.nii.gz")
-    maskb1filename = os.path.join(WIP_directory, "mask_b1.nii.gz")
-    maskErodedfilename = os.path.join(WIP_directory, "mask_b1_eroded.nii.gz")
-    GetMask(Afi_filename, maskb1filename, maskErodedfilename)
+        # b1 masking
+        b1cropfilename = os.path.join(WIP_directory, "b1_crop.nii.gz")
+        cropB1(maskErodedfilename, b1filename, b1cropfilename)
 
-    # b1 masking
-    b1cropfilename = os.path.join(WIP_directory, "b1_crop.nii.gz")
-    cropB1(maskErodedfilename, b1filename, b1cropfilename)
+        # Median dilation
+        b1cropdilmfilename = os.path.join(WIP_directory, "b1_crop_dilm.nii.gz")
+        DilM(b1cropfilename, b1cropdilmfilename)
 
-    # Median dilation
-    b1cropdilmfilename = os.path.join(WIP_directory, "b1_crop_dilm.nii.gz")
-    DilM(b1cropfilename, b1cropdilmfilename)
+        # Neutrality
+        b1cropdilmneutralfilename = os.path.join(
+            WIP_directory, "b1_crop_dilm_neutral.nii.gz"
+        )
+        NeutralValue(b1cropdilmfilename, b1cropdilmneutralfilename)
 
-    # Neutrality
-    b1cropdilmneutralfilename = os.path.join(
-        WIP_directory, "b1_crop_dilm_neutral.nii.gz"
-    )
-    NeutralValue(b1cropdilmfilename, b1cropdilmneutralfilename)
+        # Smoothing
+        b1smoothedfilename = os.path.join(WIP_directory, "b1_smoothed.nii.gz")
+        Cropped_and_smooth(b1cropdilmneutralfilename, b1smoothedfilename)
 
-    # Smoothing
-    b1smoothedfilename = os.path.join(WIP_directory, "b1_smoothed.nii.gz")
-    Cropped_and_smooth(b1cropdilmneutralfilename, b1smoothedfilename)
+        # Registration
+        Afi_extracted = os.path.join(WIP_directory, "afi_extracted.nii.gz")
+        transformation = os.path.join(WIP_directory, "AfiExtractedToFA90")
+        afi_registred = os.path.join(WIP_directory, "afi_registred.nii.gz")
+        afi_registred_inv = os.path.join(WIP_directory, "afi_registred_inv.nii.gz")
+        Rigid_registration(
+            Afi_filename,
+            Afi_extracted,
+            FA90_filename,
+            transformation,
+            afi_registred,
+            afi_registred_inv,
+        )
 
-    # Registration
-    Afi_extracted = os.path.join(WIP_directory, "afi_extracted.nii.gz")
-    transformation = os.path.join(WIP_directory, "AfiExtractedToFA90")
-    afi_registred = os.path.join(WIP_directory, "afi_registred.nii.gz")
-    afi_registred_inv = os.path.join(WIP_directory, "afi_registred_inv.nii.gz")
-    Rigid_registration(
-        Afi_filename,
-        Afi_extracted,
-        FA90_filename,
-        transformation,
-        afi_registred,
-        afi_registred_inv,
-    )
-
-    transformationfinal = os.path.join(
-        WIP_directory, "AfiExtractedToFA900GenericAffine.mat"
-    )
-    b1registredfilename = os.path.join(MaterialDirectory, "b1_registred.nii.gz")
-    Apply_registration(
-        FA90_filename, transformationfinal, b1smoothedfilename, b1registredfilename
-    )
-
-    # Remove WIP directory
-    shutil.rmtree(WIP_directory)
+        transformationfinal = os.path.join(
+            WIP_directory, "AfiExtractedToFA900GenericAffine.mat"
+        )
+        b1registredfilename = os.path.join(MaterialDirectory, "b1_registred.nii.gz")
+        Apply_registration(
+            FA90_filename, transformationfinal, b1smoothedfilename, b1registredfilename
+        )
 
 
 def parse_command_line(argv):
