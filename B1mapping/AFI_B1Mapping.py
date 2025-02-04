@@ -14,8 +14,8 @@ Authors :
     Lucas Arcamone
 """
 
+import argparse
 import math
-import optparse
 import os
 import shutil
 import subprocess
@@ -235,29 +235,32 @@ def AFI_B1Mapping(MaterialDirectory, Afi_filename, FA90_filename, TR1, TR2):
 
 def parse_command_line(argv):
     """Parse the script's command line."""
-    parser = optparse.OptionParser()
-    parser.add_option(
+    parser = argparse.ArgumentParser(
+        description="Calculate a map of transmit field inhomogeneity (B1+) "
+        "based on an Actual Flip angle Imaging (AFI) acquisition",
+    )
+    parser.add_argument(
         "-m", "--material", dest="materialDirectory", help="Material directory"
     )
-    parser.add_option("-a", "--afi", dest="AFI", help="AFIfilename")
-    parser.add_option("-f", "--FA90", dest="FA90", help="Fa90 filename")
-    parser.add_option("-t", "--TR1", dest="TR1", help="TR1")
-    parser.add_option("-u", "--TR2", dest="TR2", help="TR2")
+    parser.add_argument("-a", "--afi", dest="AFI", help="AFIfilename")
+    parser.add_argument("-f", "--FA90", dest="FA90", help="Fa90 filename")
+    parser.add_argument("-t", "--TR1", dest="TR1", type=float, help="TR1")
+    parser.add_argument("-u", "--TR2", dest="TR2", type=float, help="TR2")
 
-    options, args = parser.parse_args()
-    return options
+    args = parser.parse_args()
+    return args
 
 
 def main(argv=sys.argv):
     """The script's entry point."""
-    options = parse_command_line(argv)
+    args = parse_command_line(argv)
     return (
         AFI_B1Mapping(
-            options.materialDirectory,
-            options.AFI,
-            options.FA90,
-            options.TR1,
-            options.TR2,
+            args.materialDirectory,
+            args.AFI,
+            args.FA90,
+            args.TR1,
+            args.TR2,
         )
         or 0
     )
