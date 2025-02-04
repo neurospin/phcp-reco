@@ -19,6 +19,7 @@ import optparse
 import math
 import os
 import shutil
+import subprocess
 from scipy.ndimage import binary_erosion
 import nibabel.processing as proc
 
@@ -45,14 +46,23 @@ def B1(WIP_directory, Afi_filename, TR1, TR2):
 
 
 def GetMask(Afi_filename, maskfilename, maskEroded):
-    os.system(
-        "singularity exec --bind /neurospin:/neurospin:rw "
-        + " /neurospin/phcp/code/gkg/2022-12-20_gkg/2022-12-20_gkg.sif "
-        + "GkgExecuteCommand GetMask -i "
-        + Afi_filename
-        + " -o "
-        + maskfilename
-        + " -a 2 -verbose"
+    subprocess.run(
+        [
+            "singularity",
+            "exec",
+            "--bind",
+            "/neurospin:/neurospin:rw",
+            "/neurospin/phcp/code/gkg/2022-12-20_gkg/2022-12-20_gkg.sif",
+            "GkgExecuteCommand",
+            "GetMask",
+            "-i",
+            Afi_filename,
+            "-o",
+            maskfilename,
+            "-a",
+            "2",
+            "-verbose",
+        ]
     )
     meta_mask = ni.load(maskfilename)
     arr_mask = meta_mask.get_fdata()
@@ -81,15 +91,15 @@ def cropB1(maskErodeFilename, b1Filename, output):
 
 
 def DilM(b1CropFilename, b1CropDilMFilename):
-    os.system("fslmaths " + b1CropFilename + " -dilM " + b1CropDilMFilename)
-    os.system("fslmaths " + b1CropDilMFilename + " -dilM " + b1CropDilMFilename)
-    os.system("fslmaths " + b1CropDilMFilename + " -dilM " + b1CropDilMFilename)
-    os.system("fslmaths " + b1CropDilMFilename + " -dilM " + b1CropDilMFilename)
-    os.system("fslmaths " + b1CropDilMFilename + " -dilM " + b1CropDilMFilename)
-    os.system("fslmaths " + b1CropDilMFilename + " -dilM " + b1CropDilMFilename)
-    os.system("fslmaths " + b1CropDilMFilename + " -dilM " + b1CropDilMFilename)
-    os.system("fslmaths " + b1CropDilMFilename + " -dilM " + b1CropDilMFilename)
-    os.system("fslmaths " + b1CropDilMFilename + " -dilM " + b1CropDilMFilename)
+    subprocess.run(["fslmaths", b1CropFilename, "-dilM", b1CropDilMFilename])
+    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
+    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
+    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
+    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
+    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
+    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
+    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
+    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
     return None
 
 
@@ -125,31 +135,28 @@ def Rigid_registration(
     meta = ni.load(Afi_filename)
     ni_im = ni.Nifti1Image(meta.get_fdata()[:, :, :, 0], meta.affine)
     ni.save(ni_im, Afi_extracted)
-    os.system(
-        "antsRegistration -d 3"
-        + " -r "
-        + "["
-        + FA90_filename
-        + ","
-        + Afi_extracted
-        + ",1]"
-        + " -t Rigid[0.1]"
-        + " -m MI["
-        + FA90_filename
-        + ","
-        + Afi_extracted
-        + ",1,100,Regular,0.5]"
-        + " -o ["
-        + transformation
-        + ","
-        + afi_registred
-        + ","
-        + afi_registred_inv
-        + "]"
-        + " -c [100x100x100, 1e-6, 5]"
-        + " -s 4x2x1"
-        + " -f 4x2x1"
-        + " -v 1"
+    subprocess.run(
+        [
+            "antsRegistration",
+            "-d",
+            "3",
+            "-r",
+            "[" + FA90_filename + "," + Afi_extracted + ",1]",
+            "-t",
+            "Rigid[0.1]",
+            "-m",
+            "MI[" + FA90_filename + "," + Afi_extracted + ",1,100,Regular,0.5]",
+            "-o",
+            "[" + transformation + "," + afi_registred + "," + afi_registred_inv + "]",
+            "-c",
+            "[100x100x100, 1e-6, 5]",
+            "-s",
+            "4x2x1",
+            "-f",
+            "4x2x1",
+            "-v",
+            "1",
+        ]
     )
     return None
 
@@ -157,18 +164,23 @@ def Rigid_registration(
 def Apply_registration(
     FA90_filename, transformation, b1Smoothed, b1SmoothedAfterRegistration
 ):
-    os.system(
-        "antsApplyTransforms -d 3"
-        + " -i "
-        + b1Smoothed
-        + " -r "
-        + FA90_filename
-        + " -o "
-        + b1SmoothedAfterRegistration
-        + " -n BSpline[3]"
-        + " -t "
-        + transformation
-        + " -v "
+    subprocess.run(
+        [
+            "antsApplyTransforms",
+            "-d",
+            "3",
+            "-i",
+            b1Smoothed,
+            "-r",
+            FA90_filename,
+            "-o",
+            b1SmoothedAfterRegistration,
+            "-n",
+            "BSpline[3]",
+            "-t",
+            transformation,
+            "-v",
+        ]
     )
     return None
 
