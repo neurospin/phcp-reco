@@ -19,6 +19,7 @@ import optparse
 import os
 import shutil
 import subprocess
+import sys
 
 import nibabel
 import nibabel.processing
@@ -174,7 +175,7 @@ def Apply_registration(
 ##  MAIN part
 
 
-def main(MaterialDirectory, Afi_filename, FA90_filename, TR1, TR2):
+def AFI_B1Mapping(MaterialDirectory, Afi_filename, FA90_filename, TR1, TR2):
     # creation of the material directory
     WIP_directory = os.path.join(MaterialDirectory, "WIP")
     os.mkdir(WIP_directory)
@@ -232,16 +233,35 @@ def main(MaterialDirectory, Afi_filename, FA90_filename, TR1, TR2):
     shutil.rmtree(WIP_directory)
 
 
-parser = optparse.OptionParser()
-parser.add_option(
-    "-m", "--material", dest="materialDirectory", help="Material directory"
-)
-parser.add_option("-a", "--afi", dest="AFI", help="AFIfilename")
-parser.add_option("-f", "--FA90", dest="FA90", help="Fa90 filename")
-parser.add_option("-t", "--TR1", dest="TR1", help="TR1")
-parser.add_option("-u", "--TR2", dest="TR2", help="TR2")
+def parse_command_line(argv):
+    """Parse the script's command line."""
+    parser = optparse.OptionParser()
+    parser.add_option(
+        "-m", "--material", dest="materialDirectory", help="Material directory"
+    )
+    parser.add_option("-a", "--afi", dest="AFI", help="AFIfilename")
+    parser.add_option("-f", "--FA90", dest="FA90", help="Fa90 filename")
+    parser.add_option("-t", "--TR1", dest="TR1", help="TR1")
+    parser.add_option("-u", "--TR2", dest="TR2", help="TR2")
 
-(options, args) = parser.parse_args()
+    options, args = parser.parse_args()
+    return options
 
 
-main(options.materialDirectory, options.AFI, options.FA90, options.TR1, options.TR2)
+def main(argv=sys.argv):
+    """The script's entry point."""
+    options = parse_command_line(argv)
+    return (
+        AFI_B1Mapping(
+            options.materialDirectory,
+            options.AFI,
+            options.FA90,
+            options.TR1,
+            options.TR2,
+        )
+        or 0
+    )
+
+
+if __name__ == "__main__":
+    sys.exit(main())
