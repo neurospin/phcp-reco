@@ -14,7 +14,6 @@ Authors :
     Lucas Arcamone
 """
 
-import argparse
 import math
 import os
 import shutil
@@ -235,6 +234,8 @@ def AFI_B1Mapping(MaterialDirectory, Afi_filename, FA90_filename, TR1, TR2):
 
 def parse_command_line(argv):
     """Parse the script's command line."""
+    import argparse
+
     parser = argparse.ArgumentParser(
         description="Calculate a map of transmit field inhomogeneity (B1+) "
         "based on an Actual Flip angle Imaging (AFI) acquisition",
@@ -248,6 +249,15 @@ def parse_command_line(argv):
     parser.add_argument("-u", "--TR2", dest="TR2", type=float, help="TR2")
 
     args = parser.parse_args()
+    if None in [
+        args.materialDirectory,
+        args.AFI,
+        args.FA90,
+        args.TR1,
+        args.TR2,
+    ]:
+        parser.error("all parameters are mandatory")
+
     return args
 
 
