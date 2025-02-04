@@ -20,10 +20,10 @@ import os
 import shutil
 import subprocess
 
-import nibabel as ni
+import nibabel
+import nibabel.processing
 import numpy as np
 from scipy.ndimage import binary_erosion
-import nibabel.processing as proc
 
 
 def safeAcos(arr):
@@ -37,13 +37,13 @@ def safeAcos(arr):
 
 def B1(WIP_directory, Afi_filename, TR1, TR2):
     output = os.path.join(WIP_directory, "b1.nii.gz")
-    meta = ni.load(Afi_filename)
+    meta = nibabel.load(Afi_filename)
     arr = meta.get_fdata()
     with np.errstate(divide="ignore", invalid="ignore"):
         r = arr[:, :, :, 1] / arr[:, :, :, 0]
     n = TR2 / TR1
     res = safeAcos((r * n - 1) / (n - r)) * 180 / (60 * np.pi)  # Yarnykh, V. L. (2007).
-    ni.save(ni.Nifti1Image(res, meta.affine), output)
+    nibabel.save(nibabel.Nifti1Image(res, meta.affine), output)
     return None
 
 
@@ -66,7 +66,7 @@ def GetMask(Afi_filename, maskfilename, maskEroded):
             "-verbose",
         ]
     )
-    meta_mask = ni.load(maskfilename)
+    meta_mask = nibabel.load(maskfilename)
     arr_mask = meta_mask.get_fdata()
     kernel = np.asarray(
         [
@@ -76,19 +76,19 @@ def GetMask(Afi_filename, maskfilename, maskEroded):
         ]
     )
     erosion = binary_erosion(arr_mask, kernel, 2)
-    ni_im = ni.Nifti1Image(np.where(erosion, 1.0, 0.0), 0.2 * meta_mask.affine)
-    ni.save(ni_im, maskEroded)
+    ni_im = nibabel.Nifti1Image(np.where(erosion, 1.0, 0.0), 0.2 * meta_mask.affine)
+    nibabel.save(ni_im, maskEroded)
     return None
 
 
 def cropB1(maskErodeFilename, b1Filename, output):
-    meta_maskcorr = ni.load(maskErodeFilename)
-    meta_B1 = ni.load(b1Filename)
+    meta_maskcorr = nibabel.load(maskErodeFilename)
+    meta_B1 = nibabel.load(b1Filename)
     arr_maskcorr = meta_maskcorr.get_fdata()
     arr_maskcorr = np.flip(arr_maskcorr, 2)
     arr_res = meta_B1.get_fdata() * arr_maskcorr
-    ni_im = ni.Nifti1Image(arr_res, meta_B1.affine)
-    ni.save(ni_im, output)
+    ni_im = nibabel.Nifti1Image(arr_res, meta_B1.affine)
+    nibabel.save(ni_im, output)
     return None
 
 
@@ -98,23 +98,23 @@ def DilM(b1CropFilename, b1CropDilMFilename):
 
 
 def NeutralValue(b1CropDilMFilename, b1CropDilMNeutralFilename):
-    meta = ni.load(b1CropDilMFilename)
+    meta = nibabel.load(b1CropDilMFilename)
     arr = (
         meta.get_fdata() * 900
     )  # Neutral value is 900 in Gkg toolbox (Siemens standards)
     arr_filtered = np.where(arr < 5.0, 900, arr)
-    ni_im = ni.Nifti1Image(
+    ni_im = nibabel.Nifti1Image(
         np.where(np.isnan(arr_filtered), 900, arr_filtered), meta.affine
     )
-    ni.save(ni_im, b1CropDilMNeutralFilename)
+    nibabel.save(ni_im, b1CropDilMNeutralFilename)
     return None
 
 
 def Cropped_and_smooth(b1CropDilMNeutralFilename, b1Smoothed):
-    meta = ni.load(b1CropDilMNeutralFilename)
-    fwhm = proc.sigma2fwhm(2)
-    B1AfterRegistration_smoothed = proc.smooth_image(meta, fwhm)
-    ni.save(B1AfterRegistration_smoothed, b1Smoothed)
+    meta = nibabel.load(b1CropDilMNeutralFilename)
+    fwhm = nibabel.processing.sigma2fwhm(2)
+    B1AfterRegistration_smoothed = nibabel.processing.smooth_image(meta, fwhm)
+    nibabel.save(B1AfterRegistration_smoothed, b1Smoothed)
     return None
 
 
@@ -126,9 +126,9 @@ def Rigid_registration(
     afi_registred,
     afi_registred_inv,
 ):
-    meta = ni.load(Afi_filename)
-    ni_im = ni.Nifti1Image(meta.get_fdata()[:, :, :, 0], meta.affine)
-    ni.save(ni_im, Afi_extracted)
+    meta = nibabel.load(Afi_filename)
+    ni_im = nibabel.Nifti1Image(meta.get_fdata()[:, :, :, 0], meta.affine)
+    nibabel.save(ni_im, Afi_extracted)
     subprocess.run(
         [
             "antsRegistration",
