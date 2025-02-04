@@ -38,8 +38,8 @@ def B1(WIP_directory, Afi_filename, TR1, TR2):
     output = os.path.join(WIP_directory, "b1.nii.gz")
     meta = ni.load(Afi_filename)
     arr = meta.get_fdata()
-    np.seterr(divide="ignore", invalid="ignore")
-    r = arr[:, :, :, 1] / arr[:, :, :, 0]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        r = arr[:, :, :, 1] / arr[:, :, :, 0]
     n = TR2 / TR1
     res = safeAcos((r * n - 1) / (n - r)) * 180 / (60 * np.pi)  # Yarnykh, V. L. (2007).
     ni.save(ni.Nifti1Image(res, meta.affine), output)
