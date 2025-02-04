@@ -35,7 +35,10 @@ def safeAcos(arr) -> np.ndarray:
     return ret
 
 
-def B1(WIP_directory, Afi_filename, TR1, TR2) -> None:
+def compute_raw_B1map(
+    WIP_directory: str, Afi_filename: str, TR1: float, TR2: float
+) -> None:
+    """Compute a B1 map from the AFI using the formula of Yarnykh et al. 2007."""
     output = os.path.join(WIP_directory, "b1.nii.gz")
     meta = nibabel.load(Afi_filename)
     arr = meta.get_fdata()
@@ -46,7 +49,10 @@ def B1(WIP_directory, Afi_filename, TR1, TR2) -> None:
     nibabel.save(nibabel.Nifti1Image(res, meta.affine), output)
 
 
-def GetMask(Afi_filename, maskfilename, maskEroded) -> None:
+def compute_mask_from_AFI(
+    Afi_filename: str, maskfilename: str, maskEroded: str
+) -> None:
+    """Compute a mask and eroded mask from an AFI image."""
     subprocess.run(
         [
             "singularity",
@@ -79,21 +85,27 @@ def GetMask(Afi_filename, maskfilename, maskEroded) -> None:
     nibabel.save(ni_im, maskEroded)
 
 
-def cropB1(maskErodeFilename, b1Filename, output) -> None:
+def apply_mask_to_B1(maskErodeFilename: str, b1Filename: str, output: str) -> None:
     meta_maskcorr = nibabel.load(maskErodeFilename)
     meta_B1 = nibabel.load(b1Filename)
     arr_maskcorr = meta_maskcorr.get_fdata()
-    arr_maskcorr = np.flip(arr_maskcorr, 2)
+    arr_maskcorr = np.flip(arr_maskcorr, 2)  # FIXME: get rid of this ad-hoc flip
     arr_res = meta_B1.get_fdata() * arr_maskcorr
     ni_im = nibabel.Nifti1Image(arr_res, meta_B1.affine)
     nibabel.save(ni_im, output)
 
 
-def DilM(b1CropFilename, b1CropDilMFilename) -> None:
+def dilate_in_background(b1CropFilename: str, b1CropDilMFilename: str) -> None:
     subprocess.run(["fslmaths", b1CropFilename] + ["-dilM"] * 9 + [b1CropDilMFilename])
 
 
-def NeutralValue(b1CropDilMFilename, b1CropDilMNeutralFilename) -> None:
+def scale_to_900_and_filter(
+    b1CropDilMFilename: str, b1CropDilMNeutralFilename: str
+) -> None:
+    """Scale the B1map from relative to decidegrees.
+
+    Values very close to zero and NaNs are replaced by the neutral value, 900.
+    """
     meta = nibabel.load(b1CropDilMFilename)
     arr = (
         meta.get_fdata() * 900
@@ -105,20 +117,21 @@ def NeutralValue(b1CropDilMFilename, b1CropDilMNeutralFilename) -> None:
     nibabel.save(ni_im, b1CropDilMNeutralFilename)
 
 
-def Cropped_and_smooth(b1CropDilMNeutralFilename, b1Smoothed) -> None:
+def smooth_B1map(b1CropDilMNeutralFilename: str, b1Smoothed: str) -> None:
+    """Apply a smoothing (2 millimetres Gaussian) to the B1 map."""
     meta = nibabel.load(b1CropDilMNeutralFilename)
     fwhm = nibabel.processing.sigma2fwhm(2)
     B1AfterRegistration_smoothed = nibabel.processing.smooth_image(meta, fwhm)
     nibabel.save(B1AfterRegistration_smoothed, b1Smoothed)
 
 
-def Rigid_registration(
-    Afi_filename,
-    Afi_extracted,
-    FA90_filename,
-    transformation,
-    afi_registred,
-    afi_registred_inv,
+def register_AFI_to_FLASH(
+    Afi_filename: str,
+    Afi_extracted: str,
+    FA90_filename: str,
+    transformation: str,
+    afi_registred: str,
+    afi_registred_inv: str,
 ) -> None:
     meta = nibabel.load(Afi_filename)
     ni_im = nibabel.Nifti1Image(meta.get_fdata()[:, :, :, 0], meta.affine)
@@ -148,7 +161,7 @@ def Rigid_registration(
     )
 
 
-def Apply_registration(
+def transform_B1map_into_FLASH(
     FA90_filename, transformation, b1Smoothed, b1SmoothedAfterRegistration
 ) -> None:
     subprocess.run(
@@ -175,38 +188,38 @@ def AFI_B1Mapping(MaterialDirectory, Afi_filename, FA90_filename, TR1, TR2):
     # creation of the material directory
     with tempfile.TemporaryDirectory(prefix="AFI_B1Mapping") as WIP_directory:
         # Creation of b1
-        B1(WIP_directory, Afi_filename, int(TR1), int(TR2))
+        compute_raw_B1map(WIP_directory, Afi_filename, int(TR1), int(TR2))
 
         # Creation of the eroded mask
         b1filename = os.path.join(WIP_directory, "b1.nii.gz")
         maskb1filename = os.path.join(WIP_directory, "mask_b1.nii.gz")
         maskErodedfilename = os.path.join(WIP_directory, "mask_b1_eroded.nii.gz")
-        GetMask(Afi_filename, maskb1filename, maskErodedfilename)
+        compute_mask_from_AFI(Afi_filename, maskb1filename, maskErodedfilename)
 
         # b1 masking
         b1cropfilename = os.path.join(WIP_directory, "b1_crop.nii.gz")
-        cropB1(maskErodedfilename, b1filename, b1cropfilename)
+        apply_mask_to_B1(maskErodedfilename, b1filename, b1cropfilename)
 
         # Median dilation
         b1cropdilmfilename = os.path.join(WIP_directory, "b1_crop_dilm.nii.gz")
-        DilM(b1cropfilename, b1cropdilmfilename)
+        dilate_in_background(b1cropfilename, b1cropdilmfilename)
 
         # Neutrality
         b1cropdilmneutralfilename = os.path.join(
             WIP_directory, "b1_crop_dilm_neutral.nii.gz"
         )
-        NeutralValue(b1cropdilmfilename, b1cropdilmneutralfilename)
+        scale_to_900_and_filter(b1cropdilmfilename, b1cropdilmneutralfilename)
 
         # Smoothing
         b1smoothedfilename = os.path.join(WIP_directory, "b1_smoothed.nii.gz")
-        Cropped_and_smooth(b1cropdilmneutralfilename, b1smoothedfilename)
+        smooth_B1map(b1cropdilmneutralfilename, b1smoothedfilename)
 
         # Registration
         Afi_extracted = os.path.join(WIP_directory, "afi_extracted.nii.gz")
         transformation = os.path.join(WIP_directory, "AfiExtractedToFA90")
         afi_registred = os.path.join(WIP_directory, "afi_registred.nii.gz")
         afi_registred_inv = os.path.join(WIP_directory, "afi_registred_inv.nii.gz")
-        Rigid_registration(
+        register_AFI_to_FLASH(
             Afi_filename,
             Afi_extracted,
             FA90_filename,
@@ -219,7 +232,7 @@ def AFI_B1Mapping(MaterialDirectory, Afi_filename, FA90_filename, TR1, TR2):
             WIP_directory, "AfiExtractedToFA900GenericAffine.mat"
         )
         b1registredfilename = os.path.join(MaterialDirectory, "b1_registred.nii.gz")
-        Apply_registration(
+        transform_B1map_into_FLASH(
             FA90_filename, transformationfinal, b1smoothedfilename, b1registredfilename
         )
 
