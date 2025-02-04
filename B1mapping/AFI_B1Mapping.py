@@ -76,7 +76,7 @@ def GetMask(Afi_filename, maskfilename, maskEroded):
     )
     erosion = binary_erosion(arr_mask, kernel, 2)
     ni_im = ni.Nifti1Image(np.where(erosion, 1.0, 0.0), 0.2 * meta_mask.affine)
-    ni.loadsave.save(ni_im, maskEroded)
+    ni.save(ni_im, maskEroded)
     return None
 
 
@@ -105,7 +105,7 @@ def NeutralValue(b1CropDilMFilename, b1CropDilMNeutralFilename):
     ni_im = ni.Nifti1Image(
         np.where(np.isnan(arr_filtered), 900, arr_filtered), meta.affine
     )
-    ni.loadsave.save(ni_im, b1CropDilMNeutralFilename)
+    ni.save(ni_im, b1CropDilMNeutralFilename)
     return None
 
 
