@@ -89,7 +89,7 @@ def apply_mask_to_B1(maskErodeFilename: str, b1Filename: str, output: str) -> No
     meta_maskcorr = nibabel.load(maskErodeFilename)
     meta_B1 = nibabel.load(b1Filename)
     arr_maskcorr = meta_maskcorr.get_fdata()
-    arr_maskcorr = np.flip(arr_maskcorr, 2)  # FIXME: get rid of this ad-hoc flip
+    arr_maskcorr = np.flip(arr_maskcorr, 2)  # FIXME(yl): get rid of this ad-hoc flip
     arr_res = meta_B1.get_fdata() * arr_maskcorr
     ni_im = nibabel.Nifti1Image(arr_res, meta_B1.affine)
     nibabel.save(ni_im, output)
@@ -215,6 +215,9 @@ def AFI_B1Mapping(MaterialDirectory, Afi_filename, FA90_filename, TR1, TR2):
         smooth_B1map(b1cropdilmneutralfilename, b1smoothedfilename)
 
         # Registration
+        #
+        # FIXME(yl): if we perform registration at all, shouldn't we do it in each
+        # modality's script?
         Afi_extracted = os.path.join(WIP_directory, "afi_extracted.nii.gz")
         transformation = os.path.join(WIP_directory, "AfiExtractedToFA90")
         afi_registred = os.path.join(WIP_directory, "afi_registred.nii.gz")
