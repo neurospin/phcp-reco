@@ -6,6 +6,7 @@ Description :
 Needs :
     2022-12-20_gkg singularity container
     ANTS
+    FSL
 Usage :
     Previously initiate FSL
     python AFI_B1Mapping.py ./Working/Directory/ AFI_filename.nii.gz FLASH_FA90_filename.nii.gz TR1_in_ms TR2_in_ms
@@ -91,15 +92,7 @@ def cropB1(maskErodeFilename, b1Filename, output):
 
 
 def DilM(b1CropFilename, b1CropDilMFilename):
-    subprocess.run(["fslmaths", b1CropFilename, "-dilM", b1CropDilMFilename])
-    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
-    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
-    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
-    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
-    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
-    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
-    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
-    subprocess.run(["fslmaths", b1CropDilMFilename, "-dilM", b1CropDilMFilename])
+    subprocess.run(["fslmaths", b1CropFilename] + ["-dilM"] * 9 + [b1CropDilMFilename])
     return None
 
 
