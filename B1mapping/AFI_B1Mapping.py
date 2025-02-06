@@ -85,11 +85,18 @@ def compute_mask_from_AFI(
     nibabel.save(ni_im, maskEroded)
 
 
+def nibabel_orient_like(
+    img: nibabel.spatialimages.SpatialImage, ref: nibabel.spatialimages.SpatialImage
+) -> nibabel.spatialimages.SpatialImage:
+    img_ornt = nibabel.orientations.io_orientation(img.affine)
+    ref_ornt = nibabel.orientations.io_orientation(ref.affine)
+    return img.as_reoriented(nibabel.orientations.ornt_transform(img_ornt, ref_ornt))
+
+
 def apply_mask_to_B1(maskErodeFilename: str, b1Filename: str, output: str) -> None:
-    meta_maskcorr = nibabel.load(maskErodeFilename)
     meta_B1 = nibabel.load(b1Filename)
+    meta_maskcorr = nibabel_orient_like(nibabel.load(maskErodeFilename), meta_B1)
     arr_maskcorr = meta_maskcorr.get_fdata()
-    arr_maskcorr = np.flip(arr_maskcorr, 2)  # FIXME(yl): get rid of this ad-hoc flip
     arr_res = meta_B1.get_fdata() * arr_maskcorr
     ni_im = nibabel.Nifti1Image(arr_res, meta_B1.affine)
     nibabel.save(ni_im, output)
