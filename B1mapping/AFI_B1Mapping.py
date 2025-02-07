@@ -81,7 +81,11 @@ def compute_mask_from_AFI(
         ]
     )
     erosion = binary_erosion(arr_mask, kernel, 2)
-    ni_im = nibabel.Nifti1Image(np.where(erosion, 1.0, 0.0), 0.2 * meta_mask.affine)
+    # Gkg GetMask sets the sform incorrectly to the identity matrix, so we have
+    # to use the qform explicitly instead of the "best affine".
+    affine, qform_code = meta_mask.header.get_qform(coded=True)
+    assert qform_code == 1  # ensure qform points to scanner-based coordinates
+    ni_im = nibabel.Nifti1Image(np.where(erosion, 1.0, 0.0), affine)
     nibabel.save(ni_im, maskEroded)
 
 
