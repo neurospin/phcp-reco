@@ -47,10 +47,12 @@ def compute_raw_B1map(
     output = os.path.join(WIP_directory, "b1.nii.gz")
     meta = nibabel.load(Afi_filename)
     arr = meta.get_fdata()
+    n = TR2 / TR1
     with np.errstate(divide="ignore", invalid="ignore"):
         r = arr[:, :, :, 1] / arr[:, :, :, 0]
-    n = TR2 / TR1
-    res = safeAcos((r * n - 1) / (n - r)) * 180 / (60 * np.pi)  # Yarnykh, V. L. (2007).
+        res = safeAcos((r * n - 1) / (n - r)) * (
+            180 / (60 * np.pi)
+        )  # Yarnykh, V. L. (2007).
     nibabel.save(nibabel.Nifti1Image(res, meta.affine), output)
 
 
