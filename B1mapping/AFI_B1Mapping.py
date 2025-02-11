@@ -9,7 +9,7 @@ Needs :
     FSL
 Usage :
     Previously initiate FSL
-    python AFI_B1Mapping.py ./Working/Directory/ AFI_filename.nii.gz TR1_in_ms TR2_in_ms
+    python AFI_B1Mapping.py img_TB1AFI.nii.gz img_TB1map.nii.gz
 Authors :
     Lucas Arcamone
 """
@@ -24,6 +24,10 @@ import nibabel
 import nibabel.processing
 import numpy as np
 from scipy.ndimage import binary_erosion
+
+
+DEFAULT_TR1 = 15.0
+DEFAULT_TR2 = 45.0
 
 
 def safeAcos(arr) -> np.ndarray:
@@ -137,9 +141,12 @@ def smooth_B1map(b1CropDilMNeutralFilename: str, b1Smoothed: str) -> None:
 
 
 def AFI_B1Mapping(
-    MaterialDirectory: str, Afi_filename: str, TR1: float, TR2: float
+    Afi_filename: str,
+    B1map_filename: str,
+    TR1: float = DEFAULT_TR1,
+    TR2: float = DEFAULT_TR2,
 ) -> None:
-    # creation of the material directory
+    # creation of the working directory
     with tempfile.TemporaryDirectory(prefix="AFI_B1Mapping") as WIP_directory:
         # Creation of b1
         compute_raw_B1map(WIP_directory, Afi_filename, int(TR1), int(TR2))
@@ -165,8 +172,7 @@ def AFI_B1Mapping(
         scale_to_900_and_filter(b1cropdilmfilename, b1cropdilmneutralfilename)
 
         # Smoothing
-        b1smoothedfilename = os.path.join(MaterialDirectory, "b1_smoothed.nii.gz")
-        smooth_B1map(b1cropdilmneutralfilename, b1smoothedfilename)
+        smooth_B1map(b1cropdilmneutralfilename, B1map_filename)
 
 
 def parse_command_line(argv):
@@ -178,21 +184,17 @@ def parse_command_line(argv):
         "based on an Actual Flip angle Imaging (AFI) acquisition",
     )
     parser.add_argument(
-        "-m", "--material", dest="materialDirectory", help="Material directory"
+        "AFI", help="Input raw AFI scan (normally a BIDS file named *_TB1AFI.nii.gz"
     )
-    parser.add_argument("-a", "--afi", dest="AFI", help="AFIfilename")
-    parser.add_argument("-t", "--TR1", dest="TR1", type=float, help="TR1")
-    parser.add_argument("-u", "--TR2", dest="TR2", type=float, help="TR2")
+    parser.add_argument("TB1map", help="Output map of the Transmit B1 field")
+    parser.add_argument(
+        "-t", "--TR1", type=float, default=DEFAULT_TR1, help="TR1 in milliseconds"
+    )
+    parser.add_argument(
+        "-u", "--TR2", type=float, default=DEFAULT_TR2, help="TR2 in milliseconds"
+    )
 
     args = parser.parse_args()
-    if None in [
-        args.materialDirectory,
-        args.AFI,
-        args.TR1,
-        args.TR2,
-    ]:
-        parser.error("all parameters are mandatory")
-
     return args
 
 
@@ -201,10 +203,10 @@ def main(argv=sys.argv):
     args = parse_command_line(argv)
     return (
         AFI_B1Mapping(
-            args.materialDirectory,
             args.AFI,
-            args.TR1,
-            args.TR2,
+            args.TB1map,
+            TR1=args.TR1,
+            TR2=args.TR2,
         )
         or 0
     )
