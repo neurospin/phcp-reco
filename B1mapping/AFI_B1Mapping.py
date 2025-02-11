@@ -2,14 +2,14 @@
 Script :
     AFI_B1Mapping.py
 Description :
-    Generate B1 map using the AFI method, registered on the FLASH FA = 90°.
+    Generate B1 map using the AFI method
 Needs :
     2022-12-20_gkg singularity container
     ANTS
     FSL
 Usage :
     Previously initiate FSL
-    python AFI_B1Mapping.py ./Working/Directory/ AFI_filename.nii.gz FLASH_FA90_filename.nii.gz TR1_in_ms TR2_in_ms
+    python AFI_B1Mapping.py ./Working/Directory/ AFI_filename.nii.gz TR1_in_ms TR2_in_ms
 Authors :
     Lucas Arcamone
 """
@@ -132,70 +132,13 @@ def smooth_B1map(b1CropDilMNeutralFilename: str, b1Smoothed: str) -> None:
     """Apply a smoothing (2 millimetres Gaussian) to the B1 map."""
     meta = nibabel.load(b1CropDilMNeutralFilename)
     fwhm = nibabel.processing.sigma2fwhm(2)
-    B1AfterRegistration_smoothed = nibabel.processing.smooth_image(meta, fwhm)
-    nibabel.save(B1AfterRegistration_smoothed, b1Smoothed)
+    B1_smoothed = nibabel.processing.smooth_image(meta, fwhm)
+    nibabel.save(B1_smoothed, b1Smoothed)
 
 
-def register_AFI_to_FLASH(
-    Afi_filename: str,
-    Afi_extracted: str,
-    FA90_filename: str,
-    transformation: str,
-    afi_registred: str,
-    afi_registred_inv: str,
+def AFI_B1Mapping(
+    MaterialDirectory: str, Afi_filename: str, TR1: float, TR2: float
 ) -> None:
-    meta = nibabel.load(Afi_filename)
-    ni_im = nibabel.Nifti1Image(meta.get_fdata()[:, :, :, 0], meta.affine)
-    nibabel.save(ni_im, Afi_extracted)
-    subprocess.run(
-        [
-            "antsRegistration",
-            "-d",
-            "3",
-            "-r",
-            "[" + FA90_filename + "," + Afi_extracted + ",1]",
-            "-t",
-            "Rigid[0.1]",
-            "-m",
-            "MI[" + FA90_filename + "," + Afi_extracted + ",1,100,Regular,0.5]",
-            "-o",
-            "[" + transformation + "," + afi_registred + "," + afi_registred_inv + "]",
-            "-c",
-            "[100x100x100, 1e-6, 5]",
-            "-s",
-            "4x2x1",
-            "-f",
-            "4x2x1",
-            "-v",
-            "1",
-        ]
-    )
-
-
-def transform_B1map_into_FLASH(
-    FA90_filename, transformation, b1Smoothed, b1SmoothedAfterRegistration
-) -> None:
-    subprocess.run(
-        [
-            "antsApplyTransforms",
-            "-d",
-            "3",
-            "-i",
-            b1Smoothed,
-            "-r",
-            FA90_filename,
-            "-o",
-            b1SmoothedAfterRegistration,
-            "-n",
-            "BSpline[3]",
-            "-t",
-            transformation,
-            "-v",
-        ]
-    )
-
-
-def AFI_B1Mapping(MaterialDirectory, Afi_filename, FA90_filename, TR1, TR2):
     # creation of the material directory
     with tempfile.TemporaryDirectory(prefix="AFI_B1Mapping") as WIP_directory:
         # Creation of b1
@@ -222,33 +165,8 @@ def AFI_B1Mapping(MaterialDirectory, Afi_filename, FA90_filename, TR1, TR2):
         scale_to_900_and_filter(b1cropdilmfilename, b1cropdilmneutralfilename)
 
         # Smoothing
-        b1smoothedfilename = os.path.join(WIP_directory, "b1_smoothed.nii.gz")
+        b1smoothedfilename = os.path.join(MaterialDirectory, "b1_smoothed.nii.gz")
         smooth_B1map(b1cropdilmneutralfilename, b1smoothedfilename)
-
-        # Registration
-        #
-        # FIXME(yl): if we perform registration at all, shouldn't we do it in each
-        # modality's script?
-        Afi_extracted = os.path.join(WIP_directory, "afi_extracted.nii.gz")
-        transformation = os.path.join(WIP_directory, "AfiExtractedToFA90")
-        afi_registred = os.path.join(WIP_directory, "afi_registred.nii.gz")
-        afi_registred_inv = os.path.join(WIP_directory, "afi_registred_inv.nii.gz")
-        register_AFI_to_FLASH(
-            Afi_filename,
-            Afi_extracted,
-            FA90_filename,
-            transformation,
-            afi_registred,
-            afi_registred_inv,
-        )
-
-        transformationfinal = os.path.join(
-            WIP_directory, "AfiExtractedToFA900GenericAffine.mat"
-        )
-        b1registredfilename = os.path.join(MaterialDirectory, "b1_registred.nii.gz")
-        transform_B1map_into_FLASH(
-            FA90_filename, transformationfinal, b1smoothedfilename, b1registredfilename
-        )
 
 
 def parse_command_line(argv):
@@ -263,7 +181,6 @@ def parse_command_line(argv):
         "-m", "--material", dest="materialDirectory", help="Material directory"
     )
     parser.add_argument("-a", "--afi", dest="AFI", help="AFIfilename")
-    parser.add_argument("-f", "--FA90", dest="FA90", help="Fa90 filename")
     parser.add_argument("-t", "--TR1", dest="TR1", type=float, help="TR1")
     parser.add_argument("-u", "--TR2", dest="TR2", type=float, help="TR2")
 
@@ -271,7 +188,6 @@ def parse_command_line(argv):
     if None in [
         args.materialDirectory,
         args.AFI,
-        args.FA90,
         args.TR1,
         args.TR2,
     ]:
@@ -287,7 +203,6 @@ def main(argv=sys.argv):
         AFI_B1Mapping(
             args.materialDirectory,
             args.AFI,
-            args.FA90,
             args.TR1,
             args.TR2,
         )
