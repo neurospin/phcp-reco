@@ -27,9 +27,11 @@ import nibabel.processing
 import numpy as np
 from scipy.ndimage import binary_erosion
 
+from phcp.config import GKG_CMDLINE
+from phcp.fsl import run_fsl_command
+
 
 logger = logging.getLogger(__name__)
-
 
 DEFAULT_TR1 = 15.0
 DEFAULT_TR2 = 45.0
@@ -64,12 +66,8 @@ def compute_mask_from_AFI(
 ) -> None:
     """Compute a mask and eroded mask from an AFI image."""
     subprocess.run(
-        [
-            "singularity",
-            "exec",
-            "--bind",
-            "/neurospin:/neurospin:rw",
-            "/neurospin/phcp/code/gkg/2022-12-20_gkg/2022-12-20_gkg.sif",
+        GKG_CMDLINE
+        + [
             "GkgExecuteCommand",
             "GetMask",
             "-i",
@@ -117,7 +115,7 @@ def apply_mask_to_B1(maskErodeFilename: str, b1Filename: str, output: str) -> No
 
 
 def dilate_in_background(b1CropFilename: str, b1CropDilMFilename: str) -> None:
-    subprocess.run(["fslmaths", b1CropFilename] + ["-dilM"] * 9 + [b1CropDilMFilename])
+    run_fsl_command(["fslmaths", b1CropFilename] + ["-dilM"] * 9 + [b1CropDilMFilename])
 
 
 def scale_to_900_and_filter(
