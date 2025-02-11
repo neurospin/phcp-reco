@@ -14,6 +14,7 @@ Authors :
     Lucas Arcamone
 """
 
+import logging
 import math
 import os
 import shutil
@@ -25,6 +26,9 @@ import nibabel
 import nibabel.processing
 import numpy as np
 from scipy.ndimage import binary_erosion
+
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_TR1 = 15.0
@@ -41,10 +45,9 @@ def safeAcos(arr) -> np.ndarray:
 
 
 def compute_raw_B1map(
-    WIP_directory: str, Afi_filename: str, TR1: float, TR2: float
+    Afi_filename: str, B1map_filename: str, TR1: float, TR2: float
 ) -> None:
     """Compute a B1 map from the AFI using the formula of Yarnykh et al. 2007."""
-    output = os.path.join(WIP_directory, "b1.nii.gz")
     meta = nibabel.load(Afi_filename)
     arr = meta.get_fdata()
     n = TR2 / TR1
@@ -53,7 +56,7 @@ def compute_raw_B1map(
         res = safeAcos((r * n - 1) / (n - r)) * (
             180 / (60 * np.pi)
         )  # Yarnykh, V. L. (2007).
-    nibabel.save(nibabel.Nifti1Image(res, meta.affine), output)
+    nibabel.save(nibabel.Nifti1Image(res, meta.affine), B1map_filename)
 
 
 def compute_mask_from_AFI(
@@ -155,36 +158,44 @@ def AFI_B1Mapping(
         if work_dir is None:
             delete_work_dir = True
             work_dir = tempfile.mkdtemp(prefix="AFI_B1Mapping_")
+            logger.info("Creating temporary working directory %s", work_dir)
         else:
             delete_work_dir = False
 
         # Creation of b1
-        compute_raw_B1map(work_dir, Afi_filename, int(TR1), int(TR2))
+        b1filename = os.path.join(work_dir, "b1_raw.nii.gz")
+        logger.info("Computing raw B1 map: %s", b1filename)
+        compute_raw_B1map(Afi_filename, b1filename, TR1, TR2)
 
         # Creation of the eroded mask
-        b1filename = os.path.join(work_dir, "b1.nii.gz")
         maskb1filename = os.path.join(work_dir, "mask_b1.nii.gz")
         maskErodedfilename = os.path.join(work_dir, "mask_b1_eroded.nii.gz")
+        logger.info("Computing mask: %s", maskErodedfilename)
         compute_mask_from_AFI(Afi_filename, maskb1filename, maskErodedfilename)
 
         # b1 masking
         b1cropfilename = os.path.join(work_dir, "b1_crop.nii.gz")
+        logger.info("Applying mask: %s", b1cropfilename)
         apply_mask_to_B1(maskErodedfilename, b1filename, b1cropfilename)
 
         # Median dilation
         b1cropdilmfilename = os.path.join(work_dir, "b1_crop_dilm.nii.gz")
+        logger.info("Dilating B1 map: %s", b1cropdilmfilename)
         dilate_in_background(b1cropfilename, b1cropdilmfilename)
 
         # Neutrality
         b1cropdilmneutralfilename = os.path.join(
             work_dir, "b1_crop_dilm_neutral.nii.gz"
         )
+        logger.info("Scaling and filtering B1 map: %s", b1cropdilmneutralfilename)
         scale_to_900_and_filter(b1cropdilmfilename, b1cropdilmneutralfilename)
 
         # Smoothing
+        logger.info("Smoothing B1 map: %s", B1map_filename)
         smooth_B1map(b1cropdilmneutralfilename, B1map_filename)
     finally:
         if delete_work_dir and work_dir is not None:
+            logger.info("Deleting temporary working directory %s", work_dir)
             shutil.rmtree(work_dir)
 
 
@@ -214,6 +225,7 @@ def parse_command_line(argv):
 
 def main(argv=sys.argv):
     """The script's entry point."""
+    logging.basicConfig(level=logging.INFO)
     args = parse_command_line(argv)
     return (
         AFI_B1Mapping(
