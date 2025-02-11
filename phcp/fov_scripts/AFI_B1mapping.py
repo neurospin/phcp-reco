@@ -77,7 +77,8 @@ def compute_mask_from_AFI(
             "-a",
             "2",
             "-verbose",
-        ]
+        ],
+        check=True,
     )
     meta_mask = nibabel.load(maskfilename)
     arr_mask = meta_mask.get_fdata()
@@ -115,7 +116,9 @@ def apply_mask_to_B1(maskErodeFilename: str, b1Filename: str, output: str) -> No
 
 
 def dilate_in_background(b1CropFilename: str, b1CropDilMFilename: str) -> None:
-    run_fsl_command(["fslmaths", b1CropFilename] + ["-dilM"] * 9 + [b1CropDilMFilename])
+    run_fsl_command(
+        ["fslmaths", b1CropFilename] + ["-dilM"] * 9 + [b1CropDilMFilename], check=True
+    )
 
 
 def scale_to_900_and_filter(
