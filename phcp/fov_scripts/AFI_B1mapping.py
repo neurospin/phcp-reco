@@ -18,7 +18,6 @@ import logging
 import math
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 
@@ -27,8 +26,8 @@ import nibabel.processing
 import numpy as np
 from scipy.ndimage import binary_erosion
 
-from phcp.config import GKG_CMDLINE
 from phcp.fsl import run_fsl_command
+from phcp.gkg import run_gkg_GetMask
 
 
 logger = logging.getLogger(__name__)
@@ -65,11 +64,8 @@ def compute_mask_from_AFI(
     Afi_filename: str, maskfilename: str, maskEroded: str
 ) -> None:
     """Compute a mask and eroded mask from an AFI image."""
-    subprocess.run(
-        GKG_CMDLINE
-        + [
-            "GkgExecuteCommand",
-            "GetMask",
+    run_gkg_GetMask(
+        [
             "-i",
             Afi_filename,
             "-o",
@@ -78,7 +74,8 @@ def compute_mask_from_AFI(
             "2",
             "-verbose",
         ],
-        check=True,
+        input_dirs=[os.path.dirname(Afi_filename)],
+        output_dirs=[os.path.dirname(maskfilename)],
     )
     meta_mask = nibabel.load(maskfilename)
     arr_mask = meta_mask.get_fdata()
