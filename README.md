@@ -59,3 +59,19 @@ fov/rawdata
             ├── sub-{subjectID}_ses-{sessionID}_TB1AFI.json
             └── sub-{subjectID}_ses-{sessionID}_TB1AFI.nii.gz
 ```
+
+### Reconstructed FoV data
+
+```
+fov/derivatives/fov-reconstructed
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── fmap
+            └── sub-{subjectID}_ses-{sessionID}_TB1map.nii.gz
+```
+
+Reconstruction of the FoV data from the rawdata goes though the following steps:
+
+```shell
+phcp-fov-afi-b1mapping fov/rawdata/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1AFI.nii.gz fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz
+```
