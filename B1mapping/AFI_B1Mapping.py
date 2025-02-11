@@ -16,6 +16,7 @@ Authors :
 
 import math
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -145,34 +146,44 @@ def AFI_B1Mapping(
     B1map_filename: str,
     TR1: float = DEFAULT_TR1,
     TR2: float = DEFAULT_TR2,
+    work_dir: str = None,
 ) -> None:
     # creation of the working directory
-    with tempfile.TemporaryDirectory(prefix="AFI_B1Mapping") as WIP_directory:
+    try:
+        if work_dir is None:
+            delete_work_dir = True
+            work_dir = tempfile.mkdtemp(prefix="AFI_B1Mapping_")
+        else:
+            delete_work_dir = False
+
         # Creation of b1
-        compute_raw_B1map(WIP_directory, Afi_filename, int(TR1), int(TR2))
+        compute_raw_B1map(work_dir, Afi_filename, int(TR1), int(TR2))
 
         # Creation of the eroded mask
-        b1filename = os.path.join(WIP_directory, "b1.nii.gz")
-        maskb1filename = os.path.join(WIP_directory, "mask_b1.nii.gz")
-        maskErodedfilename = os.path.join(WIP_directory, "mask_b1_eroded.nii.gz")
+        b1filename = os.path.join(work_dir, "b1.nii.gz")
+        maskb1filename = os.path.join(work_dir, "mask_b1.nii.gz")
+        maskErodedfilename = os.path.join(work_dir, "mask_b1_eroded.nii.gz")
         compute_mask_from_AFI(Afi_filename, maskb1filename, maskErodedfilename)
 
         # b1 masking
-        b1cropfilename = os.path.join(WIP_directory, "b1_crop.nii.gz")
+        b1cropfilename = os.path.join(work_dir, "b1_crop.nii.gz")
         apply_mask_to_B1(maskErodedfilename, b1filename, b1cropfilename)
 
         # Median dilation
-        b1cropdilmfilename = os.path.join(WIP_directory, "b1_crop_dilm.nii.gz")
+        b1cropdilmfilename = os.path.join(work_dir, "b1_crop_dilm.nii.gz")
         dilate_in_background(b1cropfilename, b1cropdilmfilename)
 
         # Neutrality
         b1cropdilmneutralfilename = os.path.join(
-            WIP_directory, "b1_crop_dilm_neutral.nii.gz"
+            work_dir, "b1_crop_dilm_neutral.nii.gz"
         )
         scale_to_900_and_filter(b1cropdilmfilename, b1cropdilmneutralfilename)
 
         # Smoothing
         smooth_B1map(b1cropdilmneutralfilename, B1map_filename)
+    finally:
+        if delete_work_dir and work_dir is not None:
+            shutil.rmtree(work_dir)
 
 
 def parse_command_line(argv):
@@ -193,6 +204,7 @@ def parse_command_line(argv):
     parser.add_argument(
         "-u", "--TR2", type=float, default=DEFAULT_TR2, help="TR2 in milliseconds"
     )
+    parser.add_argument("--work-dir", type=str, default=None)
 
     args = parser.parse_args()
     return args
@@ -207,6 +219,7 @@ def main(argv=sys.argv):
             args.TB1map,
             TR1=args.TR1,
             TR2=args.TR2,
+            work_dir=args.work_dir,
         )
         or 0
     )
