@@ -1,15 +1,27 @@
 # phcp-reco
 Reconstruction scripts for post-mortem multi-quantitative fetal brain MRI at 11.7 teslas
 
+## Installation
 
-## Contributing
+Dependencies:
 
-This repository uses [pre-commit](https://pre-commit.com/) to ensure that all committed code follows basic quality standards. Please install it and configure it to run as part of ``git commit`` by running ``pre-commit install`` in your local repository:
+- Python 3.10
+- [FSL](https://fsl.fmrib.ox.ac.uk/) (tested with version 6.0.7.13)
+- [ANTS](https://github.com/ANTsX/ANTs) (tested with version 2.5.4)
+- [Gkg](https://framagit.org/cpoupon/gkg) (locally distributed Singularity containers)
 
 ```shell
-pipx install pre-commit
-pre-commit install  # set up the hook (to run pre-commit during 'git commit')
+git clone https://github.com/neurospin/phcp-reco.git
+
+# Installation in a virtual environment
+cd phcp-reco
+python3 -m venv venv/
+. venv/bin/activate
+pip install -e .
 ```
+
+You may need to adapt the contents of [phcp/config.py](phcp/config.py) to suit your local set-up.
+
 
 ## Data layout
 
@@ -58,4 +70,29 @@ fov/rawdata
         └── fmap
             ├── sub-{subjectID}_ses-{sessionID}_TB1AFI.json
             └── sub-{subjectID}_ses-{sessionID}_TB1AFI.nii.gz
+```
+
+### Reconstructed FoV data
+
+```
+fov/derivatives/fov-reconstructed
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── fmap
+            └── sub-{subjectID}_ses-{sessionID}_TB1map.nii.gz
+```
+
+Reconstruction of the FoV data from the rawdata goes through the following steps:
+
+```shell
+phcp-fov-afi-b1mapping fov/rawdata/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1AFI.nii.gz fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz
+```
+
+## Contributing
+
+This repository uses [pre-commit](https://pre-commit.com/) to ensure that all committed code follows basic quality standards. Please install it and configure it to run as part of ``git commit`` by running ``pre-commit install`` in your local repository:
+
+```shell
+pipx install pre-commit
+pre-commit install  # set up the hook (to run pre-commit during 'git commit')
 ```
