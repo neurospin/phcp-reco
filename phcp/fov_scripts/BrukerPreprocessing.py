@@ -51,17 +51,20 @@ Authors :
     Lucas Arcamone
 """
 
-import os
-import json
-import sys
 import glob
+import json
+import logging
 import nibabel
-import numpy
-import optparse
+import os
 import re
+import sys
 
-sys.path.insert(0, os.path.dirname(__file__))
-import BrukerInformationParser
+import numpy
+
+from phcp import BrukerInformationParser
+
+
+logger = logging.getLogger(__name__)
 
 
 def print_message(message):
@@ -454,7 +457,7 @@ def runVolumesRGCorrection(
     return None
 
 
-def main(
+def bruker_preprocessing(
     SourcedataDirectory,
     RawdataDirectory,
     DerivativesDirectory,
@@ -570,26 +573,45 @@ def main(
     return None
 
 
-parser = optparse.OptionParser()
-parser.add_option(
-    "-s", "--sourcedata", dest="sourcedata", help="Sourcedata directory. "
-)
-parser.add_option("-r", "--rawdata", dest="rawdata", help="Rawdata directory.")
-parser.add_option(
-    "-d", "--derivatices", dest="derivatices", help="Dérivatives directory. "
-)
-parser.add_option("-q", "--subject", dest="subject", help="Subject JSON filename. ")
-parser.add_option(
-    "-p", "--descriptions", dest="descriptions", help="Descriptions directory. "
-)
+def parse_command_line(argv):
+    """Parse the script's command line."""
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-s", "--sourcedata", dest="sourcedata", help="Sourcedata directory. "
+    )
+    parser.add_argument("-r", "--rawdata", dest="rawdata", help="Rawdata directory.")
+    parser.add_argument(
+        "-d", "--derivatices", dest="derivatices", help="Dérivatives directory. "
+    )
+    parser.add_argument(
+        "-q", "--subject", dest="subject", help="Subject JSON filename. "
+    )
+    parser.add_argument(
+        "-p", "--descriptions", dest="descriptions", help="Descriptions directory. "
+    )
+    parser.add_argument("--work-dir", type=str, default=None)
+
+    args = parser.parse_args()
+    return args
 
 
-(options, args) = parser.parse_args()
+def main(argv=sys.argv):
+    """The script's entry point."""
+    logging.basicConfig(level=logging.INFO)
+    args = parse_command_line(argv)
+    return (
+        bruker_preprocessing(
+            args.sourcedata,
+            args.rawdata,
+            args.derivatices,
+            args.subject,
+            args.descriptions,
+        )
+        or 0
+    )
 
-main(
-    options.sourcedata,
-    options.rawdata,
-    options.derivatices,
-    options.subject,
-    options.descriptions,
-)
+
+if __name__ == "__main__":
+    sys.exit(main())

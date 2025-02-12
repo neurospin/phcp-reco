@@ -12,7 +12,11 @@ Authors :
     Yann Leprince
 """
 
+import logging
 import math
+
+
+logger = logging.getLogger(__name__)
 
 
 class BrukerInformationParser:
@@ -246,7 +250,7 @@ class BrukerInformationParser:
                     index += 1
 
         else:
-            print("getMatrix(): sizes[ 0 ] > 1 not managed")
+            logger.error("getMatrix(): sizes[ 0 ] > 1 not managed")
 
         return result
 
