@@ -9,6 +9,7 @@ Needs :
 Usage :
     Used in PreprocessingPipeline.py
 Authors :
+    Cyril Poupon
     Yann Leprince
 """
 
