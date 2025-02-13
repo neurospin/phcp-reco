@@ -543,6 +543,7 @@ def bruker_preprocessing(
                     )
 
             RGCorrectionDirectory = os.path.join(DerivativesDirectory, "RGCorrection")
+            os.makedirs(RGCorrectionDirectory, exist_ok=True)
 
             print_message("Run RGWritter")
 
