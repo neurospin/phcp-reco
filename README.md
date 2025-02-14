@@ -72,6 +72,100 @@ fov/rawdata
             └── sub-{subjectID}_ses-{sessionID}_TB1AFI.nii.gz
 ```
 
+### Early pre-processing
+
+Early pre-processing of the raw data is performed with the `phcp-bruker-preprocessing` script, which includes:
+
+- extraction of the b-vectors and b-values from the Bruker source data (`acqp` and `method`, `visu_pars` files) into standard BIDS-format `.bvec` and `.bval` files;
+- extraction of receiver gain values from the Bruker source data (`acqp` file) for the diffusion and VFA images, and homogenization of the values to correct for potential receiver gain differences;
+- concatenation of the segmented diffusion scans and of the individual VFA scans.
+
+#### Inputs
+
+The `phcp-bruker-preprocessing` script uses a few JSON files as configuration. You have to create a `description` directory, which can be stored under `derivatives/gkg-Pipeline/PreprocessingDescriptions`:
+
+```
+derivatives/gkg-Pipeline/PreprocessingDescriptions
+├── sub-{subjectID}
+│   ├── RG_description.json
+│   └── sub-{subjectID}_ses-{sessionID}_description.json
+└── sub-{subjectID}.json
+```
+
+- `RG_description.json` contains a list of sessions with the list of modalities to be processed for each:
+```json
+{
+  "sub-{subjectID}_ses-{sessionID}": [
+    "b1500",
+    "b4500",
+    "b8000",
+    "VFA"
+  ]
+}
+```
+- `sub-{subjectID}_ses-{sessionID}_description.json` contains the list of Bruker scan numbers associated with each run of the segmented diffusion, for example::
+
+```json
+{
+  "b1500": [97, 98],
+  "b4500": [91, 92, 93, 94, 95, 96],
+  "b8000": [82, 83, 84, 85, 86, 87, 88, 89, 90]
+}
+```
+
+Additionally, the “subject file”, whose name is free but suggested to be in the form `sub-{subjectID}.json`, contains the list of subjects/sessions to be processed in the following form:
+
+```json
+{
+  "sub-{subjectID}": ["ses-{sessionID}"]
+}
+```
+
+#### Usage
+
+```shell
+phcp-brucker-preprocessing \
+    --sourcedata fov/sourcedata \
+    --rawdata fov/rawdata \
+    --derivatices fov/derivatives \
+    --subject descriptions/sub-{subjectID}.json \
+    --descriptions descriptions/sub-{subjectID}
+```
+
+#### Outputs
+
+```
+fov/rawdata
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── dwi
+            ├── sub-{subjectID}_ses-{sessionID}_acq-{bval}_run-{run}_dwi.bvec
+            └── sub-{subjectID}_ses-{sessionID}_acq-{bval}_run-{run}_dwi.bval
+fov/derivatives/RGCorrection
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        ├── RG_values.json
+        └── sub-{subjectID}_ses-{sessionID}_VFA.nii.gz
+fov/derivatives/gkg-Pipeline/
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        ├── b1500
+        │   └── 01-Materials
+        │       ├── sub-{subjectID}_ses-{sessionID}_acq-b1500_dwi.bval
+        │       ├── sub-{subjectID}_ses-{sessionID}_acq-b1500_dwi.bvec
+        │       └── sub-{subjectID}_ses-{sessionID}_acq-b1500_dwi.nii.gz
+        ├── b4500
+        │   └── 01-Materials
+        │       ├── sub-{subjectID}_ses-{sessionID}_acq-b4500_dwi.bval
+        │       ├── sub-{subjectID}_ses-{sessionID}_acq-b4500_dwi.bvec
+        │       └── sub-{subjectID}_ses-{sessionID}_acq-b4500_dwi.nii.gz
+        └── b8000
+            └── 01-Materials
+                ├── sub-{subjectID}_ses-{sessionID}_acq-b8000_dwi.bval
+                ├── sub-{subjectID}_ses-{sessionID}_acq-b8000_dwi.bvec
+                └── sub-{subjectID}_ses-{sessionID}_acq-b8000_dwi.nii.gz
+```
+
 ### Reconstructed FoV data
 
 ```
@@ -85,7 +179,9 @@ fov/derivatives/fov-reconstructed
 Reconstruction of the FoV data from the rawdata goes through the following steps:
 
 ```shell
-phcp-fov-afi-b1mapping fov/rawdata/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1AFI.nii.gz fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz
+phcp-fov-afi-b1mapping \
+    fov/rawdata/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1AFI.nii.gz \
+    fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz
 ```
 
 ## Contributing
