@@ -16,6 +16,7 @@ Homepage = "https://github.com/neurospin/phcp-reco"
 
 [project.scripts]
 phcp-fov-afi-b1mapping = "phcp.fov_scripts.AFI_B1mapping:main"
+phcp-brucker-preprocessing = "phcp.fov_scripts.BrukerPreprocessing:main"
 
 [tool.setuptools]
 packages = ["phcp"]
