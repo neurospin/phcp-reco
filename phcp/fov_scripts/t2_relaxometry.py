@@ -1,27 +1,15 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jan 17 2025
-
-@author: la272118
-"""
-
-import os
+import glob
 import json
-import optparse
+import logging
+import os
 import subprocess
+import sys
+
 import numpy as np
 import nibabel as ni
-import glob
 
 
-""" Miscellaneous algorithms """
-
-
-def print_message(message):
-    print("==================================")
-    print(message)
-    print("==================================")
+logger = logging.getLogger(__name__)
 
 
 def ConversionGisToNifti(InputGisFilename, OutputNiftiFilename):
@@ -186,8 +174,7 @@ def create_ConfidenceMap(
 def runT2RelaxometryMapper(
     subjectDirectoryGisConversion, MSMEFilenames, outputDirectory, verbose
 ):
-    if verbose:
-        print_message("SINGLE COMPARTMENT T2 RELAXOMETRY MAPPER")
+    logger.info("SINGLE COMPARTMENT T2 RELAXOMETRY MAPPER")
 
     fileNameMSME = os.path.join(subjectDirectoryGisConversion, "t2-msme.nii.gz")
     fileNameMask = os.path.join(subjectDirectoryGisConversion, "mask.nii.gz")
@@ -229,33 +216,59 @@ def runT2RelaxometryMapper(
     return None
 
 
-################################################################################
-# parser to get option(s)
-################################################################################
+def parse_command_line(argv):
+    """Parse the script's command line."""
+    import argparse
 
-parser = optparse.OptionParser()
-parser.add_option("-i", "--input", dest="t2msmedirectory", help="T2-MSME Directory")
-parser.add_option(
-    "-m",
-    "--msme",
-    dest="MSMEFilenames",
-    help="String for glob research of MSME volumes. Ex : /phcp/rawdata/sub/ses/anat/sub_ses_echo*_MESE.json",
-)
-parser.add_option(
-    "-o", "--outputDirectory", dest="outputDirectory", help="Output directory"
-)
-parser.add_option("-v", "--verbose", dest="verbose", default=True, help="verbose")
+    parser = argparse.ArgumentParser(
+        description="reconstruct T2 relaxometry based on the Multi Echo Spin Echo method",
+    )
+    parser.add_argument(
+        "-i", "--input", dest="t2msmedirectory", help="T2-MSME Directory"
+    )
+    parser.add_argument(
+        "-m",
+        "--msme",
+        dest="MSMEFilenames",
+        help="String for glob search of MSME volumes. Ex: /phcp/rawdata/sub/ses/anat/sub_ses_echo*_MESE.json",
+    )
+    parser.add_argument(
+        "-o", "--outputDirectory", dest="outputDirectory", help="Output directory"
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        dest="verbose",
+        action="store_true",
+        default=True,
+        help="print detailed information during the fit",
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        dest="verbose",
+        action="store_false",
+        help="do not print detailed information during the fit",
+    )
 
-(options, args) = parser.parse_args()
+    args = parser.parse_args()
+    return args
 
 
-################################################################################
-# 1) Value Extractor
-################################################################################
+def main(argv=sys.argv):
+    """The script's entry point."""
+    logging.basicConfig(level=logging.INFO)
+    args = parse_command_line(argv)
+    return (
+        runT2RelaxometryMapper(
+            args.t2msmedirectory,
+            args.MSMEFilenames,
+            args.outputDirectory,
+            args.verbose,
+        )
+        or 0
+    )
 
-runT2RelaxometryMapper(
-    options.t2msmedirectory,
-    options.MSMEFilenames,
-    options.outputDirectory,
-    options.verbose,
-)
+
+if __name__ == "__main__":
+    sys.exit(main())

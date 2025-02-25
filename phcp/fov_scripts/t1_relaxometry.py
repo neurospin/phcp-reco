@@ -1,30 +1,18 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jan 11 09:44:07 2023
-
-@author: la272118
-"""
-
-import os
+import glob
 import json
-import optparse
+import logging
 import math
+import os
+import sys
+
 import numpy as np
 import nibabel as ni
-import glob
 import nibabel.processing as proc
 import ants
 from sklearn.mixture import GaussianMixture
 
 
-""" Miscellaneous algorithms """
-
-
-def print_message(message):
-    print("==================================")
-    print(message)
-    print("==================================")
+logger = logging.getLogger(__name__)
 
 
 def ConversionGisToNifti(InputGisFilename, OutputNiftiFilename):
@@ -64,8 +52,7 @@ def dearrange_ArrayToFlipHeaderFormat(arr):
 
 
 def VFAregister(img_filename, output_filename, verbose):
-    if verbose:
-        print("========= Loading data =========")
+    logger.info("========= Loading data =========")
 
     img_4D = ni.load(img_filename)
     arr_4D = img_4D.get_fdata()
@@ -75,7 +62,7 @@ def VFAregister(img_filename, output_filename, verbose):
     registered_volumes.append(ANTS_fixed_image)
 
     for i in range(1, volume_number):
-        print("========= Registration volume n°" + str(i) + " =========")
+        logger.info("========= Registration volume n°%d =========", i)
         ANTS_moving_image = ants.from_numpy(arr_4D[:, :, :, i])
         registration = ants.registration(
             ANTS_fixed_image,
@@ -245,7 +232,7 @@ def create_NewBiasField(biasField):
     gmm.fit(flat_arr)
 
     means = gmm.means_.flatten().tolist()
-    print(means)
+    logger.debug("means: %s", means)
     moy_inconsistency, index_inconsistency = min(means), means.index(min(means))
     means.remove(moy_inconsistency)
     moy_normal = min(means)  # index_normal = means.index(min(means))
@@ -262,8 +249,7 @@ def create_NewBiasField(biasField):
 
 
 def correct_qt1(T1GisFilename, verbose=True):
-    if verbose:
-        print_message("Loading data")
+    logger.info("Loading data")
 
     T1NiftiFilename = T1GisFilename.split(".")[0] + ".nii.gz"
 
@@ -273,15 +259,13 @@ def correct_qt1(T1GisFilename, verbose=True):
     ants_T1img = ants.image_read(T1NiftiFilename)
     ants_T1img_mask = ants_T1img.get_mask()
 
-    if verbose:
-        print_message("Bias Field Processing")
+    logger.info("Bias Field Processing")
 
     biasField = extract_BiasField(ants_T1img, ants_T1img_mask, verbose)
 
     ants.image_write(biasField, T1GisFilename.split(".")[0] + "BiasField1.nii.gz")
 
-    if verbose:
-        print_message("New Bias Field Generation")
+    logger.info("New Bias Field Generation")
 
     newbiasField = create_NewBiasField(biasField)
 
@@ -289,8 +273,7 @@ def correct_qt1(T1GisFilename, verbose=True):
     fwhm = proc.sigma2fwhm(6)
     ni_im = ni.Nifti1Image(np.float32(newbiasField), meta.affine, meta.header)
 
-    if verbose:
-        print_message("Smoothing part")
+    logger.info("Smoothing part")
 
     newbiasField_smooth = proc.smooth_image(ni_im, fwhm)
     newbiasField_smooth_Filename = T1GisFilename.split(".")[0] + "_BiasField.nii.gz"
@@ -300,8 +283,7 @@ def correct_qt1(T1GisFilename, verbose=True):
 
     unbiased_T1 = ants_T1img * newbiasField_smooth
 
-    if verbose:
-        print_message("Saving Part")
+    logger.info("Saving Part")
 
     T1Nifti_unbiased_Filename = T1GisFilename.split(".")[0] + "_rec-unbiased.nii.gz"
 
@@ -316,12 +298,10 @@ def runT1RelaxometryMapper(
     fileNameVFACat = os.path.join(subjectDirectoryGisConversion, "t1map-TRSAA.nii.gz")
 
     if not (os.path.exists(fileNameVFACat)):
-        if verbose:
-            print_message("T1 RELAXOMETRY : VFA REGISTRATION")
+        logger.info("T1 RELAXOMETRY : VFA REGISTRATION")
         VFAregister(fileNameVFACat0, fileNameVFACat, verbose)
 
-    if verbose:
-        print_message("SINGLE COMPARTMENT T1 RELAXOMETRY MAPPER")
+    logger.info("SINGLE COMPARTMENT T1 RELAXOMETRY MAPPER")
 
     fileNameMask = os.path.join(subjectDirectoryGisConversion, "mask.nii.gz")
     t1FileName = os.path.join(subjectDirectoryGisConversion, "t1_extracted.nii.gz")
@@ -368,37 +348,60 @@ def runT1RelaxometryMapper(
         )
         ni.save(ni_im, fileNameConfidenceMap)
 
-    if verbose:
-        print_message("Correction Part")
+    logger.info("Correction Part")
 
     correct_qt1(fileNameOutputT1, verbose)
     return None
 
 
-################################################################################
-# parser to get option(s)
-################################################################################
+def parse_command_line(argv):
+    """Parse the script's command line."""
+    import argparse
 
-parser = optparse.OptionParser()
-parser.add_option("-i", "--input", dest="vfadirectory", help="VFA Directory")
-parser.add_option(
-    "-m",
-    "--vfa",
-    dest="VFAFilenames",
-    help="String for glob research of MGE volumes. Ex : /phcp/rawdata/sub/ses/anat/sub_ses_flip*_VFA.json",
-)
-parser.add_option(
-    "-o", "--outputDirectory", dest="outputDirectory", help="Output directory"
-)
-parser.add_option("-v", "--verbose", dest="verbose", default=True, help="verbose")
+    parser = argparse.ArgumentParser(
+        description="reconstruct T1 relaxometry based on the Variable Flip Angle method",
+    )
+    parser.add_argument("-i", "--input", dest="vfadirectory", help="VFA Directory")
+    parser.add_argument(
+        "-m",
+        "--vfa",
+        dest="VFAFilenames",
+        help="String for glob search of VFA volumes. Ex: /phcp/rawdata/sub/ses/anat/sub_ses_flip*_VFA.json",
+    )
+    parser.add_argument(
+        "-o", "--outputDirectory", dest="outputDirectory", help="Output directory"
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        dest="verbose",
+        action="store_true",
+        default=True,
+        help="print detailed information during the fit",
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        dest="verbose",
+        action="store_false",
+        help="do not print detailed information during the fit",
+    )
 
-(options, args) = parser.parse_args()
+    args = parser.parse_args()
+    return args
 
 
-################################################################################
-# 1) Value Extractor
-################################################################################
+def main(argv=sys.argv):
+    """The script's entry point."""
+    logging.basicConfig(level=logging.INFO)
+    args = parse_command_line(argv)
+    return (
+        runT1RelaxometryMapper(
+            args.vfadirectory, args.VFAFilenames, args.outputDirectory, args.verbose
+        )
+        or 0
+    )
 
-runT1RelaxometryMapper(
-    options.vfadirectory, options.VFAFilenames, options.outputDirectory, options.verbose
-)
+
+if __name__ == "__main__":
+    sys.exit(main())

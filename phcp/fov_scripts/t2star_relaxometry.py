@@ -1,26 +1,14 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jan  6 10:03:08 2023
-
-@author: la272118
-"""
-
-import os
+import glob
 import json
-import optparse
+import logging
+import os
+import sys
+
 import numpy as np
 import nibabel as ni
-import glob
 
 
-""" Miscellaneous algorithms """
-
-
-def print_message(message):
-    print("==================================")
-    print(message)
-    print("==================================")
+logger = logging.getLogger(__name__)
 
 
 def ConversionGisToNifti(InputGisFilename, OutputNiftiFilename):
@@ -180,8 +168,7 @@ def create_ConfidenceMap(
 def runT2StarRelaxometryMapper(
     subjectDirectoryGisConversion, MGEFilenames, outputDirectory, verbose
 ):
-    if verbose:
-        print_message("SINGLE COMPARTMENT T2Star RELAXOMETRY MAPPER")
+    logger.info("SINGLE COMPARTMENT T2Star RELAXOMETRY MAPPER")
 
     fileNameMGE = os.path.join(subjectDirectoryGisConversion, "t2star-mge.nii.gz")
     fileNameMask = os.path.join(subjectDirectoryGisConversion, "mask.nii.gz")
@@ -222,30 +209,55 @@ def runT2StarRelaxometryMapper(
     return None
 
 
-################################################################################
-# parser to get option(s)
-################################################################################
+def parse_command_line(argv):
+    """Parse the script's command line."""
+    import argparse
 
-parser = optparse.OptionParser()
-parser.add_option("-i", "--input", dest="mgedirectory", help="MEGRE Directory")
-parser.add_option(
-    "-m",
-    "--mge",
-    dest="MGEFilenames",
-    help="String for glob research of MGE volumes. Ex : /phcp/rawdata/sub/ses/anat/sub_ses_echo*_MEGRE.json",
-)
-parser.add_option(
-    "-o", "--outputDirectory", dest="outputDirectory", help="Output directory"
-)
-parser.add_option("-v", "--verbose", dest="verbose", default=True, help="verbose")
+    parser = argparse.ArgumentParser(
+        description="reconstruct T2* relaxometry based on the Multi Echo GRadient Echo method",
+    )
 
-(options, args) = parser.parse_args()
+    parser.add_argument("-i", "--input", dest="mgedirectory", help="MEGRE Directory")
+    parser.add_argument(
+        "-m",
+        "--mge",
+        dest="MGEFilenames",
+        help="String for glob search of MGE volumes. Ex: /phcp/rawdata/sub/ses/anat/sub_ses_echo*_MEGRE.json",
+    )
+    parser.add_argument(
+        "-o", "--outputDirectory", dest="outputDirectory", help="Output directory"
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        dest="verbose",
+        action="store_true",
+        default=True,
+        help="print detailed information during the fit",
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        dest="verbose",
+        action="store_false",
+        help="do not print detailed information during the fit",
+    )
+
+    args = parser.parse_args()
+    return args
 
 
-################################################################################
-# 1) Value Extractor
-################################################################################
+def main(argv=sys.argv):
+    """The script's entry point."""
+    logging.basicConfig(level=logging.INFO)
+    args = parse_command_line(argv)
+    return (
+        runT2StarRelaxometryMapper(
+            args.mgedirectory, args.MGEFilenames, args.outputDirectory, args.verbose
+        )
+        or 0
+    )
 
-runT2StarRelaxometryMapper(
-    options.mgedirectory, options.MGEFilenames, options.outputDirectory, options.verbose
-)
+
+if __name__ == "__main__":
+    sys.exit(main())
