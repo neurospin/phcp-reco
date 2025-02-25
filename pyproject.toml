@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phcp-reco"
+version = "0"
+dependencies = [
+  "numpy~=1.21",
+  "nibabel~=3.2",
+  "scipy~=1.8",
+]
+
+[project.urls]
+Homepage = "https://github.com/neurospin/phcp-reco"
+
+[project.scripts]
+phcp-fov-afi-b1mapping = "phcp.fov_scripts.AFI_B1mapping:main"
+phcp-brucker-preprocessing = "phcp.fov_scripts.BrukerPreprocessing:main"
+
+[tool.setuptools]
+packages = ["phcp"]
