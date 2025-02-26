@@ -135,7 +135,9 @@ def create_ConfidenceMap(
     arr_maskt2 = arrange_ArrayToFlipHeaderFormat(arr_maskt2)
 
     diff = arr_fittedmsme - arr_t2msme
-    std_diff = np.std(diff[:, :, :, :10], axis=-1) * arr_maskt2
+    std_diff = (
+        np.std(diff[:, :, :, :10], axis=-1) * arr_maskt2
+    )  # FIXME: magic parameter should be documented
 
     meta_t2nifti = ni.load(fileNameT2nifti)
     ni_im = ni.Nifti1Image(
