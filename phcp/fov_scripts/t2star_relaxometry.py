@@ -13,9 +13,8 @@ from phcp.gkg import (
     run_gkg_command,
     run_gkg_GetMask,
     run_gkg_SubVolume,
-    arrange_ArrayToFlipHeaderFormat,
-    dearrange_ArrayToFlipHeaderFormat,
 )
+from phcp.image import nibabel_orient_like
 
 
 logger = logging.getLogger(__name__)
@@ -103,26 +102,22 @@ def create_ConfidenceMap(
 ):
     meta_fittedmge = ni.load(fileNameFittedMGE)
     arr_fittedmge = meta_fittedmge.get_fdata()
-    arr_fittedmge = arrange_ArrayToFlipHeaderFormat(arr_fittedmge)
 
-    meta_mge = ni.load(fileNameMGE)
+    meta_mge = nibabel_orient_like(ni.load(fileNameMGE), meta_fittedmge)
     arr_mge = meta_mge.get_fdata()
 
-    meta_mask = ni.load(fileNameMask)
+    meta_mask = nibabel_orient_like(ni.load(fileNameMask), meta_fittedmge)
     arr_mask = meta_mask.get_fdata()
-    arr_mask = arrange_ArrayToFlipHeaderFormat(arr_mask)
 
     diff = arr_fittedmge - arr_mge
     std_diff = (
         np.std(diff[:, :, :, :6], axis=-1) * arr_mask
     )  # FIXME: magic parameter should be documented
 
-    metaT2starnifti = ni.load(fileNameT2starnifti)
-
     ni_im = ni.Nifti1Image(
-        dearrange_ArrayToFlipHeaderFormat(std_diff),
-        metaT2starnifti.affine,
-        metaT2starnifti.header,
+        std_diff,
+        meta_fittedmge.affine,
+        meta_fittedmge.header,
     )
     return ni_im
 

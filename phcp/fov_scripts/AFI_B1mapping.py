@@ -28,6 +28,7 @@ from scipy.ndimage import binary_erosion
 
 from phcp.fsl import run_fsl_command
 from phcp.gkg import run_gkg_GetMask
+from phcp.image import nibabel_orient_like
 
 
 logger = logging.getLogger(__name__)
@@ -93,14 +94,6 @@ def compute_mask_from_AFI(
     assert qform_code == 1  # ensure qform points to scanner-based coordinates
     ni_im = nibabel.Nifti1Image(np.where(erosion, 1.0, 0.0), affine)
     nibabel.save(ni_im, maskEroded)
-
-
-def nibabel_orient_like(
-    img: nibabel.spatialimages.SpatialImage, ref: nibabel.spatialimages.SpatialImage
-) -> nibabel.spatialimages.SpatialImage:
-    img_ornt = nibabel.orientations.io_orientation(img.affine)
-    ref_ornt = nibabel.orientations.io_orientation(ref.affine)
-    return img.as_reoriented(nibabel.orientations.ornt_transform(img_ornt, ref_ornt))
 
 
 def apply_mask_to_B1(maskErodeFilename: str, b1Filename: str, output: str) -> None:
