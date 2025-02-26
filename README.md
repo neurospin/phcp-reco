@@ -72,6 +72,8 @@ fov/rawdata
             └── sub-{subjectID}_ses-{sessionID}_TB1AFI.nii.gz
 ```
 
+## The processing pipeline
+
 ### Early pre-processing
 
 Early pre-processing of the raw data is performed with the `phcp-bruker-preprocessing` script, which includes:
@@ -166,7 +168,38 @@ fov/derivatives/gkg-Pipeline/
                 └── sub-{subjectID}_ses-{sessionID}_acq-b8000_dwi.nii.gz
 ```
 
-### Reconstructed FoV data
+### B1 mapping
+
+The transmit B1 field inhomogeneities are mapped using an Actual Flip Angle sequence. The following script reconstructs the B1 map from the AFI data. Parameters (TR1 and TR2) are not in the JSON metadata, they have to be passed manually but default values match the protocol.
+
+#### Inputs
+
+```
+fov/rawdata
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── fmap
+            ├── sub-{subjectID}_ses-{sessionID}_TB1AFI.json
+            └── sub-{subjectID}_ses-{sessionID}_TB1AFI.nii.gz
+```
+
+#### Usage
+
+```shell
+phcp-fov-afi-b1mapping \
+    fov/rawdata/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1AFI.nii.gz \
+    fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz
+```
+
+The T1 mapping script expects to find the B1 map in a specific location, so you should copy the map over:
+
+```shell
+mkdir -p fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials
+cp fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz \
+    fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials/b1.nii.gz
+```
+
+#### Outputs
 
 ```
 fov/derivatives/fov-reconstructed
@@ -174,15 +207,13 @@ fov/derivatives/fov-reconstructed
     └── ses-{sessionID}
         └── fmap
             └── sub-{subjectID}_ses-{sessionID}_TB1map.nii.gz
+fov/derivatives/T1mapping
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── 01-Materials
+            └── b1.nii.gz
 ```
 
-Reconstruction of the FoV data from the rawdata goes through the following steps:
-
-```shell
-phcp-fov-afi-b1mapping \
-    fov/rawdata/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1AFI.nii.gz \
-    fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz
-```
 
 ## Contributing
 
