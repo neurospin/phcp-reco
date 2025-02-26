@@ -4,6 +4,8 @@ import pathlib
 import shlex
 import subprocess
 
+import numpy as np
+
 from phcp.config import GKG_CONTAINER_PATHS
 
 
@@ -153,3 +155,27 @@ def gkg_convert_gis_to_nifti(
         output_dirs=[output_dir],
         **kwargs,
     )
+
+
+def load_GIS_image(GisFilename):
+    DimFilename = GisFilename[:-3] + "dim"
+    TxtInDimFile = open(DimFilename, "r").read()
+    TxtFirstLine = TxtInDimFile.split("\n")[0]
+    shape = tuple(np.int16(TxtFirstLine.split(" ")))  # [:-1]
+    arr = np.fromfile(GisFilename, np.float32())
+    arr = np.reshape(arr, shape, order="F")
+    return arr
+
+
+def arrange_ArrayToFlipHeaderFormat(arr):
+    newarr = np.swapaxes(arr, 1, 2)
+    newarr = np.flip(newarr, 1)
+    newarr = np.flip(newarr, 0)
+    return newarr
+
+
+def dearrange_ArrayToFlipHeaderFormat(arr):
+    newarr = np.flip(arr, 0)
+    newarr = np.flip(newarr, 1)
+    newarr = np.swapaxes(newarr, 1, 2)
+    return newarr

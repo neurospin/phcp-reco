@@ -9,34 +9,16 @@ import sys
 import numpy as np
 import nibabel as ni
 
-from phcp.gkg import run_gkg_command, run_gkg_GetMask, run_gkg_SubVolume
+from phcp.gkg import (
+    run_gkg_command,
+    run_gkg_GetMask,
+    run_gkg_SubVolume,
+    arrange_ArrayToFlipHeaderFormat,
+    dearrange_ArrayToFlipHeaderFormat,
+)
 
 
 logger = logging.getLogger(__name__)
-
-
-def create_ArrayFromGisFilename(GisFilename):
-    DimFilename = GisFilename[:-3] + "dim"
-    TxtInDimFile = open(DimFilename, "r").read()
-    TxtFirstLine = TxtInDimFile.split("\n")[0]
-    shape = tuple(np.int16(TxtFirstLine.split(" ")))  # [:-1]
-    arr = np.fromfile(GisFilename, np.float32())
-    arr = np.reshape(arr, shape, order="F")
-    return arr
-
-
-def arrange_ArrayToFlipHeaderFormat(arr):
-    newarr = np.swapaxes(arr, 1, 2)
-    newarr = np.flip(newarr, 1)
-    newarr = np.flip(newarr, 0)
-    return newarr
-
-
-def dearrange_ArrayToFlipHeaderFormat(arr):
-    newarr = np.flip(arr, 0)
-    newarr = np.flip(newarr, 1)
-    newarr = np.swapaxes(newarr, 1, 2)
-    return newarr
 
 
 def createCommand_T2starSingleCompartmentRelaxometryMapper(

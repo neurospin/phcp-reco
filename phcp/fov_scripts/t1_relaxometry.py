@@ -18,34 +18,13 @@ from phcp.gkg import (
     run_gkg_command,
     run_gkg_GetMask,
     run_gkg_SubVolume,
+    load_GIS_image,
+    arrange_ArrayToFlipHeaderFormat,
+    dearrange_ArrayToFlipHeaderFormat,
 )
 
 
 logger = logging.getLogger(__name__)
-
-
-def create_ArrayFromGisFilename(GisFilename):
-    DimFilename = GisFilename[:-3] + "dim"
-    TxtInDimFile = open(DimFilename, "r").read()
-    TxtFirstLine = TxtInDimFile.split("\n")[0]
-    shape = tuple(np.int16(TxtFirstLine.split(" ")))  # [:-1]
-    arr = np.fromfile(GisFilename, np.float32())
-    arr = np.reshape(arr, shape, order="F")
-    return arr
-
-
-def arrange_ArrayToFlipHeaderFormat(arr):
-    newarr = np.swapaxes(arr, 1, 2)
-    newarr = np.flip(newarr, 1)
-    newarr = np.flip(newarr, 0)
-    return newarr
-
-
-def dearrange_ArrayToFlipHeaderFormat(arr):
-    newarr = np.flip(arr, 0)
-    newarr = np.flip(newarr, 1)
-    newarr = np.swapaxes(newarr, 1, 2)
-    return newarr
 
 
 def VFAregister(img_filename, output_filename, verbose):
@@ -172,7 +151,7 @@ def write_TR_FA(fileNameFAValues, fileNameTRValues, FAFilenames, fileNameB1):
 def create_ConfidenceMap(
     fileNameVFACat, fileNameFittedVFA, fileNameMask, fileNameT1nifti
 ):
-    arr_fittedvfa = create_ArrayFromGisFilename(fileNameFittedVFA)
+    arr_fittedvfa = load_GIS_image(fileNameFittedVFA)
     arr_fittedvfa = arrange_ArrayToFlipHeaderFormat(arr_fittedvfa)
 
     meta_vfa = ni.load(fileNameVFACat)
