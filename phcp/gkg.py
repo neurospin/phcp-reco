@@ -89,6 +89,7 @@ def run_gkg_command(
         [
             "singularity",
             "exec",
+            "--cleanenv",
         ]
         + sum((["--bind", f"{dir}:{dir}:ro"] for dir in input_dirs), [])
         + sum((["--bind", f"{dir}:{dir}:rw"] for dir in output_dirs), [])
