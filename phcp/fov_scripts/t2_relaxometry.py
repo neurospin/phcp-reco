@@ -1,3 +1,5 @@
+"""Single Compartment T2 Relaxometry Mapper"""
+
 import glob
 import json
 import logging
@@ -7,7 +9,12 @@ import sys
 import numpy as np
 import nibabel as ni
 
-from phcp.gkg import gkg_convert_gis_to_nifti
+from phcp.gkg import (
+    gkg_convert_gis_to_nifti,
+    run_gkg_command,
+    run_gkg_GetMask,
+    run_gkg_SubVolume,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -37,36 +44,6 @@ def dearrange_ArrayToFlipHeaderFormat(arr):
     return newarr
 
 
-""" Single Compartment T2 Relaxometry Mapper """
-
-
-def createCommand_SubVolume_gkgMethod(fileNameMSME, t2FileName):
-    command = (
-        "GkgExecuteCommand SubVolume"
-        + " -i "
-        + fileNameMSME
-        + " -o "
-        + t2FileName
-        + " -tIndices "
-        + str(0)
-        + " -verbose true"
-    )
-    return command
-
-
-def createCommand_Mask_gkgMethod(fileNameMSME, fileNameMask):
-    command = (
-        "GkgExecuteCommand GetMask"
-        + " -i "
-        + fileNameMSME
-        + " -o "
-        + fileNameMask
-        + " -a 2 "
-        + " -verbose "
-    )
-    return command
-
-
 def createCommand_SingleCompartmentRelaxometryMapper(
     fileNameMSME,
     fileNameMask,
@@ -76,47 +53,63 @@ def createCommand_SingleCompartmentRelaxometryMapper(
     fileNameFittedMSME,
     verbose,
 ):
-    # optimizerParameters :: <P1> : NLP maximum iteration count  <P2> : NLP test size <P3> : 0->do not apply MCMC 1->apply MCMC <P4> : MCMC burnin count <P5> : MCMC sample count <P6> : MCMC interval count <P7> : MCMC maximum iteration coun
-    # ' -optimizerParameters 50000 0.001 0 2000 300 50 10000' +\  ' -scalarParameters 0.75 50 0 0 8 180 1 20 5'  +\
-    command = (
-        "GkgExecuteCommand SingleCompartmentRelaxometryMapper"
-        + " -i %s" % fileNameMSME
-        + " -m %s" % fileNameMask
-        + " -t t2-mapping-msme"
-        + " -optimizerParameters %s " % 50000
-        + " -optimizerParameters %s " % 0.001
-        + " -optimizerParameters %s" % 0
-        + " -optimizerParameters %s" % 2000
-        + " -optimizerParameters %s" % 300
-        + " -optimizerParameters %s" % 50
-        + " -optimizerParameters %s" % 10000
-        + " -scalarParameters %s" % 0.75
-        + " -scalarParameters %s" % 50
-        + " -scalarParameters %s" % 0
-        + " -scalarParameters %s" % 0
-        + " -scalarParameters %s" % 8
-        + " -scalarParameters %s" % 180
-        + " -scalarParameters %s" % 1
-        + " -scalarParameters %s" % 20
-        + " -scalarParameters %s" % 5
-        + " -stringParameters %s" % fileNameTEValues
-        + " -op %s" % fileNameProtonDensity
-        + " -ot %s" % fileNameT2
-        + " -f %s" % fileNameFittedMSME
-        + " -ascii False"
-        + " -format gis"
-        + " -verbose %s" % verbose
-    )
+    command = [
+        "GkgExecuteCommand",
+        "SingleCompartmentRelaxometryMapper",
+        "-i",
+        fileNameMSME,
+        "-m",
+        fileNameMask,
+        "-t",
+        "t2-mapping-msme",
+        "-optimizerParameters",
+        "50000",  # <P1> : NLP maximum iteration count
+        "-optimizerParameters",
+        "0.001",  # <P2> : NLP test size
+        "-optimizerParameters",
+        "0",  # <P3> : 0->do not apply MCMC 1->apply MCMC
+        "-optimizerParameters",
+        "2000",  # <P4> : MCMC burnin count
+        "-optimizerParameters",
+        "300",  # <P5> : MCMC sample count
+        "-optimizerParameters",
+        "50",  # <P6> : MCMC interval count
+        "-optimizerParameters",
+        "10000",  # <P7> : MCMC maximum iteration count
+        "-scalarParameters",
+        "0.75",
+        "-scalarParameters",
+        "50",
+        "-scalarParameters",
+        "0",
+        "-scalarParameters",
+        "0",
+        "-scalarParameters",
+        "8",
+        "-scalarParameters",
+        "180",
+        "-scalarParameters",
+        "1",
+        "-scalarParameters",
+        "20",
+        "-scalarParameters",
+        "5",
+        "-stringParameters",
+        fileNameTEValues,
+        "-op",
+        fileNameProtonDensity,
+        "-ot",
+        fileNameT2,
+        "-f",
+        fileNameFittedMSME,
+        "-ascii",
+        "False",
+        "-format",
+        "gis",
+        "-verbose",
+        str(verbose),
+    ]
     return command
-
-
-def run_command(command):
-    os.system(
-        "singularity exec --bind /neurospin:/neurospin:rw "
-        + " /neurospin/phcp/code/gkg/2022-12-20_gkg/2022-12-20_gkg.sif "
-        + command
-    )
-    return None
 
 
 def write_EchotTime(fileNameTEValues, MSMEFilenames):
@@ -164,12 +157,25 @@ def runT2RelaxometryMapper(
     t2FileName = os.path.join(subjectDirectoryGisConversion, "t2_extracted.nii.gz")
 
     if not (os.path.exists(t2FileName)):
-        command = createCommand_SubVolume_gkgMethod(fileNameMSME, t2FileName)
-        run_command(command)
+        run_gkg_SubVolume(
+            [
+                "-i",
+                fileNameMSME,
+                "-o",
+                t2FileName,
+                "-tIndices",
+                "0",
+                "-verbose",
+                "true",
+            ],
+            output_dirs=[subjectDirectoryGisConversion],
+        )
 
     if not (os.path.exists(fileNameMask)):
-        command = createCommand_Mask_gkgMethod(fileNameMSME, fileNameMask)
-        run_command(command)
+        run_gkg_GetMask(
+            ["-i", fileNameMSME, "-o", fileNameMask, "-a", "2", "-verbose"],
+            output_dirs=[subjectDirectoryGisConversion],
+        )
 
     write_EchotTime(fileNameTEValues, MSMEFilenames)
 
@@ -186,7 +192,12 @@ def runT2RelaxometryMapper(
         fileNameFittedMSME,
         verbose,
     )
-    run_command(command)
+    run_gkg_command(
+        command,
+        gkg_container_version="2022-12-20",
+        input_dirs=[subjectDirectoryGisConversion],
+        output_dirs=[outputDirectory],
+    )
 
     fileNameT2nifti = os.path.join(outputDirectory, "T2.nii.gz")
     gkg_convert_gis_to_nifti(fileNameT2, fileNameT2nifti, verbose=True)

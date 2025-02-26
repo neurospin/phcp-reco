@@ -113,6 +113,22 @@ def run_gkg_GetMask(
     )
 
 
+def run_gkg_SubVolume(
+    args: list[str],
+    *,
+    input_dirs: list[str] = [],
+    output_dirs: list[str] = [],
+    **kwargs,
+) -> subprocess.CompletedProcess:
+    return run_gkg_command(
+        ["GkgExecuteCommand", "SubVolume"] + args,
+        gkg_container_version="2022-12-20",
+        input_dirs=input_dirs,
+        output_dirs=output_dirs,
+        **kwargs,
+    )
+
+
 def gkg_convert_gis_to_nifti(
     input_gis: str, output_nifti: str, *, verbose=False, **kwargs
 ) -> subprocess.CompletedProcess:

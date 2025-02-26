@@ -1,3 +1,5 @@
+"""Single Compartment T2Star Relaxometry Mapper"""
+
 import glob
 import json
 import logging
@@ -6,6 +8,8 @@ import sys
 
 import numpy as np
 import nibabel as ni
+
+from phcp.gkg import run_gkg_command, run_gkg_GetMask, run_gkg_SubVolume
 
 
 logger = logging.getLogger(__name__)
@@ -35,36 +39,6 @@ def dearrange_ArrayToFlipHeaderFormat(arr):
     return newarr
 
 
-""" Single Compartment T2Star Relaxometry Mapper """
-
-
-def createCommand_SubVolume_gkgMethod(fileNameMGE, t2starFileName):
-    command = (
-        "GkgExecuteCommand SubVolume"
-        + " -i "
-        + fileNameMGE
-        + " -o "
-        + t2starFileName
-        + " -tIndices "
-        + str(0)
-        + " -verbose true"
-    )
-    return command
-
-
-def createCommand_Mask_gkgMethod(fileNameMGE, fileNameMask):
-    command = (
-        "GkgExecuteCommand GetMask"
-        + " -i "
-        + fileNameMGE
-        + " -o "
-        + fileNameMask
-        + " -a 2 "
-        + " -verbose "
-    )
-    return command
-
-
 def createCommand_T2starSingleCompartmentRelaxometryMapper(
     fileNameMGE,
     fileNameMask,
@@ -74,47 +48,63 @@ def createCommand_T2starSingleCompartmentRelaxometryMapper(
     fileNameFittedMGE,
     verbose,
 ):
-    # optimizerParameters :: <P1> : NLP maximum iteration count  <P2> : NLP test size <P3> : 0->do not apply MCMC 1->apply MCMC <P4> : MCMC burnin count <P5> : MCMC sample count <P6> : MCMC interval count <P7> : MCMC maximum iteration coun
-    # ' -optimizerParameters 50000 0.001 0 2000 300 50 10000' +\  ' -scalarParameters 0.75 50 0 0 8 180 1 20 5'  +\
-    command = (
-        "GkgExecuteCommand SingleCompartmentRelaxometryMapper"
-        + " -i %s" % fileNameMGE
-        + " -m %s" % fileNameMask
-        + " -t t2-star-mapping-mgre"
-        + " -optimizerParameters %s " % 50000
-        + " -optimizerParameters %s " % 0.001
-        + " -optimizerParameters %s" % 0
-        + " -optimizerParameters %s" % 2000
-        + " -optimizerParameters %s" % 300
-        + " -optimizerParameters %s" % 50
-        + " -optimizerParameters %s" % 10000
-        + " -scalarParameters %s" % 0.3
-        + " -scalarParameters %s" % 30
-        + " -scalarParameters %s" % 0
-        + " -scalarParameters %s" % 0
-        + " -scalarParameters %s" % 8
-        + " -scalarParameters %s" % 100
-        + " -scalarParameters %s" % 1
-        + " -scalarParameters %s" % 10
-        + " -scalarParameters %s" % 2
-        + " -stringParameters %s" % fileNameTEValues
-        + " -op %s" % fileNameProtonDensity
-        + " -ot %s" % fileNameT2star
-        + " -f %s" % fileNameFittedMGE
-        + " -ascii False"
-        + " -format nifti"
-        + " -verbose %s" % verbose
-    )
+    command = [
+        "GkgExecuteCommand",
+        "SingleCompartmentRelaxometryMapper",
+        "-i",
+        fileNameMGE,
+        "-m",
+        fileNameMask,
+        "-t",
+        "t2-star-mapping-mgre",
+        "-optimizerParameters",
+        "50000",  # <P1> : NLP maximum iteration count
+        "-optimizerParameters",
+        "0.001",  # <P2> : NLP test size
+        "-optimizerParameters",
+        "0",  # <P3> : 0->do not apply MCMC 1->apply MCMC
+        "-optimizerParameters",
+        "2000",  # <P4> : MCMC burnin count
+        "-optimizerParameters",
+        "300",  # <P5> : MCMC sample count
+        "-optimizerParameters",
+        "50",  # <P6> : MCMC interval count
+        "-optimizerParameters",
+        "10000",  # <P7> : MCMC maximum iteration count
+        "-scalarParameters",
+        "0.3",
+        "-scalarParameters",
+        "30",
+        "-scalarParameters",
+        "0",
+        "-scalarParameters",
+        "0",
+        "-scalarParameters",
+        "8",
+        "-scalarParameters",
+        "100",
+        "-scalarParameters",
+        "1",
+        "-scalarParameters",
+        "10",
+        "-scalarParameters",
+        "2",
+        "-stringParameters",
+        fileNameTEValues,
+        "-op",
+        fileNameProtonDensity,
+        "-ot",
+        fileNameT2star,
+        "-f",
+        fileNameFittedMGE,
+        "-ascii",
+        "False",
+        "-format",
+        "nifti",
+        "-verbose",
+        str(verbose),
+    ]
     return command
-
-
-def run_command(command):
-    os.system(
-        "singularity exec --bind /neurospin:/neurospin:rw "
-        + " /neurospin/phcp/code/gkg/2022-12-20_gkg/2022-12-20_gkg.sif "
-        + command
-    )
-    return None
 
 
 def write_EchotTime(fileNameTEValues, MSMEFilenames):
@@ -166,12 +156,25 @@ def runT2StarRelaxometryMapper(
     )
 
     if not (os.path.exists(t2starFileName)):
-        command = createCommand_SubVolume_gkgMethod(fileNameMGE, t2starFileName)
-        run_command(command)
+        run_gkg_SubVolume(
+            [
+                "-i",
+                fileNameMGE,
+                "-o",
+                t2starFileName,
+                "-tIndices",
+                "0",
+                "-verbose",
+                "true",
+            ],
+            output_dirs=[subjectDirectoryGisConversion],
+        )
 
     if not (os.path.exists(fileNameMask)):
-        command = createCommand_Mask_gkgMethod(fileNameMGE, fileNameMask)
-        run_command(command)
+        run_gkg_GetMask(
+            ["-i", fileNameMGE, "-o", fileNameMask, "-a", "2", "-verbose"],
+            output_dirs=[subjectDirectoryGisConversion],
+        )
 
     write_EchotTime(fileNameTEValues, MGEFilenames)
 
@@ -188,7 +191,12 @@ def runT2StarRelaxometryMapper(
         fileNameFittedMGE,
         verbose,
     )
-    run_command(command)
+    run_gkg_command(
+        command,
+        gkg_container_version="2022-12-20",
+        input_dirs=[subjectDirectoryGisConversion],
+        output_dirs=[outputDirectory],
+    )
 
     ni_im = create_ConfidenceMap(
         fileNameMGE, fileNameFittedMGE, fileNameMask, fileNameT2star

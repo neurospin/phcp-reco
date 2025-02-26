@@ -1,3 +1,5 @@
+"""Single Compartment T1 Relaxometry Mapper"""
+
 import glob
 import json
 import logging
@@ -11,7 +13,12 @@ import nibabel.processing as proc
 import ants
 from sklearn.mixture import GaussianMixture
 
-from phcp.gkg import gkg_convert_gis_to_nifti
+from phcp.gkg import (
+    gkg_convert_gis_to_nifti,
+    run_gkg_command,
+    run_gkg_GetMask,
+    run_gkg_SubVolume,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -71,36 +78,6 @@ def VFAregister(img_filename, output_filename, verbose):
     ni.save(ni_im, output_filename)
 
 
-""" Single Compartment T1 Relaxometry Mapper """
-
-
-def createCommand_SubVolume_gkgMethod(fileNameVFACat, t1FileName):
-    command = (
-        "GkgExecuteCommand SubVolume"
-        + " -i "
-        + fileNameVFACat
-        + " -o "
-        + t1FileName
-        + " -tIndices "
-        + str(0)
-        + " -verbose true"
-    )
-    return command
-
-
-def createCommand_Mask_gkgMethod(t1FileName, fileNameMask):
-    command = (
-        "GkgExecuteCommand GetMask"
-        + " -i "
-        + t1FileName
-        + " -o "
-        + fileNameMask
-        + " -a 2 "
-        + " -verbose "
-    )
-    return command
-
-
 def createCommand_T1SingleCompartmentRelaxometryMapper(
     fileNameVFACat,
     fileNameMask,
@@ -111,52 +88,68 @@ def createCommand_T1SingleCompartmentRelaxometryMapper(
     fileNameOutputT1,
     fileNameFittedVFA,
     verbose,
-):
-    # StringParameter =  ( str( fileNameTRValues ), str( fileNameFAValues ), str( fileNameB1 ) )
-    command = (
-        "GkgExecuteCommand SingleCompartmentRelaxometryMapper"
-        + " -i %s" % fileNameVFACat
-        + " -m %s" % fileNameMask
-        + " -t t1-mapping-vfa-spgr"
-        + " -optimizerParameters %s " % 50000
-        + " -optimizerParameters %s " % 0.001
-        + " -optimizerParameters %s" % 1
-        + " -optimizerParameters %s" % 200
-        + " -optimizerParameters %s" % 100
-        + " -optimizerParameters %s" % 10
-        + " -optimizerParameters %s" % 1000
-        + " -scalarParameters %s" % 5
-        + " -scalarParameters %s" % 50
-        + " -scalarParameters %s" % 0
-        + " -scalarParameters %s" % 5
-        + " -scalarParameters %s" % 50
-        + " -scalarParameters %s" % 500
-        + " -scalarParameters %s" % 1
-        + " -scalarParameters %s" % 20
-        + " -scalarParameters %s" % 0.002
-        + " -stringParameters "
-        + str(fileNameTRValues)
-        + " -stringParameters "
-        + str(fileNameFAValues)
-        + " -stringParameters "
-        + str(fileNameB1)
-        + " -op %s" % fileNameProtonDensity
-        + " -ot %s" % fileNameOutputT1
-        + " -f %s" % fileNameFittedVFA
-        + " -ascii False"
-        + " -format gis"
-        + " -verbose %s" % verbose
-    )
+) -> list[str]:
+    command = [
+        "GkgExecuteCommand",
+        "SingleCompartmentRelaxometryMapper",
+        "-i",
+        fileNameVFACat,
+        "-m",
+        fileNameMask,
+        "-t",
+        "t1-mapping-vfa-spgr",
+        "-optimizerParameters",
+        "50000",
+        "-optimizerParameters",
+        "0.001",
+        "-optimizerParameters",
+        "1",
+        "-optimizerParameters",
+        "200",
+        "-optimizerParameters",
+        "100",
+        "-optimizerParameters",
+        "10",
+        "-optimizerParameters",
+        "1000",
+        "-scalarParameters",
+        "5",
+        "-scalarParameters",
+        "50",
+        "-scalarParameters",
+        "0",
+        "-scalarParameters",
+        "5",
+        "-scalarParameters",
+        "50",
+        "-scalarParameters",
+        "500",
+        "-scalarParameters",
+        "1",
+        "-scalarParameters",
+        "20",
+        "-scalarParameters",
+        "0.002",
+        "-stringParameters",
+        str(fileNameTRValues),
+        "-stringParameters",
+        str(fileNameFAValues),
+        "-stringParameters",
+        str(fileNameB1),
+        "-op",
+        fileNameProtonDensity,
+        "-ot",
+        fileNameOutputT1,
+        "-f",
+        fileNameFittedVFA,
+        "-ascii",
+        "False",
+        "-format",
+        "gis",
+        "-verbose",
+        str(verbose),
+    ]
     return command
-
-
-def run_command(command):
-    os.system(
-        "singularity exec --bind /neurospin:/neurospin:rw "
-        + " /neurospin/phcp/code/gkg/2022-12-20_gkg/2022-12-20_gkg.sif "
-        + command
-    )
-    return None
 
 
 def write_TR_FA(fileNameFAValues, fileNameTRValues, FAFilenames, fileNameB1):
@@ -300,12 +293,25 @@ def runT1RelaxometryMapper(
     fileNameFAValues = os.path.join(outputDirectory, "fa.txt")
 
     if not (os.path.exists(t1FileName)):
-        command = createCommand_SubVolume_gkgMethod(fileNameVFACat, t1FileName)
-        run_command(command)
+        run_gkg_SubVolume(
+            [
+                "-i",
+                fileNameVFACat,
+                "-o",
+                t1FileName,
+                "-tIndices",
+                "0",
+                "-verbose",
+                "true",
+            ],
+            output_dirs=[subjectDirectoryGisConversion],
+        )
 
     if not (os.path.exists(fileNameMask)):
-        command = createCommand_Mask_gkgMethod(t1FileName, fileNameMask)
-        run_command(command)
+        run_gkg_GetMask(
+            ["-i", t1FileName, "-o", fileNameMask, "-a", "2", "-verbose"],
+            output_dirs=[subjectDirectoryGisConversion],
+        )
 
     fileNameT1nifti = os.path.join(outputDirectory, "T1.nii.gz")
     fileNameProtonDensity = os.path.join(outputDirectory, "proton-density.ima")
@@ -326,7 +332,12 @@ def runT1RelaxometryMapper(
             fileNameFittedVFA,
             verbose,
         )
-        run_command(command)
+        run_gkg_command(
+            command,
+            gkg_container_version="2022-12-20",
+            input_dirs=[subjectDirectoryGisConversion],
+            output_dirs=[outputDirectory],
+        )
 
         gkg_convert_gis_to_nifti(fileNameOutputT1, fileNameT1nifti, verbose=True)
 
