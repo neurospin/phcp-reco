@@ -252,6 +252,43 @@ fov/derivatives/T2starmapping
             └── T2starConfidenceMap.nii.gz
 ```
 
+### T2 mapping
+
+#### Inputs
+
+```
+fov/rawdata
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── anat
+            ├── sub-{subjectID}_ses-{sessionID}_echo-{echo}_MESE.json
+            └── sub-{subjectID}_ses-{sessionID}_echo-{echo}_MESE.nii.gz
+```
+
+#### Usage
+
+```shell
+fslmerge -t fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/01-Materials/t2-msme.nii.gz fov/rawdata/sub-${sub}/ses-${ses}/anat/*_MESE.nii.gz
+mkdir -p fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/02-Results
+phcp-t2-relaxometry \
+    --input fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/01-Materials \
+    --msme fov/rawdata/sub-${sub}/ses-${ses}/anat/'*_MESE.json' \
+    --outputDirectory fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/02-Results
+```
+
+#### Outputs
+
+```
+fov/derivatives/T2mapping
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── 02-Results
+            ├── proton-density.nii.gz
+            ├── fitted-msme.nii.gz
+            ├── T2.nii.gz
+            └── T2ConfidenceMap.nii.gz
+```
+
 ### Outputs of the field-of-view processing pipeline
 
 ```

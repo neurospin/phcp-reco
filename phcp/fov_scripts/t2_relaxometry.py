@@ -190,16 +190,22 @@ def parse_command_line(argv):
         description="reconstruct T2 relaxometry based on the Multi Echo Spin Echo method",
     )
     parser.add_argument(
-        "-i", "--input", dest="t2msmedirectory", help="T2-MSME Directory"
+        "-i",
+        "--input",
+        help="Directory with the input t2-msme.nii.gz, "
+        + "typically fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/01-Materials",
     )
     parser.add_argument(
         "-m",
         "--msme",
         dest="MSMEFilenames",
-        help="String for glob search of MSME volumes. Ex: /phcp/rawdata/sub/ses/anat/sub_ses_echo*_MESE.json",
+        help="String for glob search of MSME volume metadata, typically fov/rawdata/sub-${sub}/ses-${ses}/anat/'*_MESE.json'",
     )
     parser.add_argument(
-        "-o", "--outputDirectory", dest="outputDirectory", help="Output directory"
+        "-o",
+        "--outputDirectory",
+        dest="outputDirectory",
+        help="Output directory, typically fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/02-Results",
     )
     parser.add_argument(
         "-v",
@@ -227,7 +233,7 @@ def main(argv=sys.argv):
     args = parse_command_line(argv)
     return (
         runT2RelaxometryMapper(
-            args.t2msmedirectory,
+            args.input,
             args.MSMEFilenames,
             args.outputDirectory,
             args.verbose,
