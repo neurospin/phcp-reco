@@ -72,7 +72,7 @@ fov/rawdata
             └── sub-{subjectID}_ses-{sessionID}_TB1AFI.nii.gz
 ```
 
-## The processing pipeline
+## The field-of-view processing pipeline
 
 ### Early pre-processing
 
@@ -186,6 +186,7 @@ fov/rawdata
 #### Usage
 
 ```shell
+mkdir -p fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap
 phcp-fov-afi-b1mapping \
     fov/rawdata/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1AFI.nii.gz \
     fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz
@@ -214,6 +215,52 @@ fov/derivatives/T1mapping
             └── b1.nii.gz
 ```
 
+### T2* mapping
+
+#### Inputs
+
+```
+fov/rawdata
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── anat
+            ├── sub-{subjectID}_ses-{sessionID}_echo-{echo}_MEGRE.json
+            └── sub-{subjectID}_ses-{sessionID}_echo-{echo}_MEGRE.nii.gz
+```
+
+#### Usage
+
+```shell
+fslmerge -t fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/01-Materials/t2star-mge.nii.gz fov/rawdata/sub-${sub}/ses-${ses}/anat/*_MEGRE.nii.gz
+mkdir -p fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/02-Results
+phcp-t2star-relaxometry \
+    --input fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/01-Materials \
+    --mge fov/rawdata/sub-${sub}/ses-${ses}/anat/'*_MEGRE.json' \
+    --outputDirectory fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/02-Results
+```
+
+#### Outputs
+
+```
+fov/derivatives/T2starmapping
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── 02-Results
+            ├── proton-density.nii.gz
+            ├── fitted-mge.nii.gz
+            ├── T2star.nii.gz
+            └── T2starConfidenceMap.nii.gz
+```
+
+### Outputs of the field-of-view processing pipeline
+
+```
+fov/derivatives/fov-reconstructed
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── fmap
+            └── sub-{subjectID}_ses-{sessionID}_TB1map.nii.gz
+```
 
 ## Contributing
 

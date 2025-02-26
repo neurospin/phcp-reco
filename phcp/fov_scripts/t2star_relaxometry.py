@@ -88,9 +88,9 @@ def createCommand_T2starSingleCompartmentRelaxometryMapper(
     return command
 
 
-def write_EchoTimes(fileNameTEValues, MSMEFilenames):
+def write_EchoTimes(fileNameTEValues, MGEFilenames):
     with open(fileNameTEValues, "w") as file:
-        for metadata_filename in sorted(glob.iglob(MSMEFilenames)):
+        for metadata_filename in sorted(glob.iglob(MGEFilenames)):
             with open(metadata_filename) as metadata_file:
                 metadata = json.load(metadata_file)
             file.write(str(metadata["EchoTime"] * 1000) + "\n")
@@ -126,6 +126,8 @@ def runT2StarRelaxometryMapper(
     subjectDirectoryGisConversion, MGEFilenames, outputDirectory, verbose
 ):
     logger.info("SINGLE COMPARTMENT T2Star RELAXOMETRY MAPPER")
+
+    # TODO: start from the separate BIDS MGE files (incorporate the concatenation in this script)
 
     fileNameMGE = os.path.join(subjectDirectoryGisConversion, "t2star-mge.nii.gz")
     fileNameMask = os.path.join(subjectDirectoryGisConversion, "mask.nii.gz")
@@ -192,15 +194,23 @@ def parse_command_line(argv):
         description="reconstruct T2* relaxometry based on the Multi Echo GRadient Echo method",
     )
 
-    parser.add_argument("-i", "--input", dest="mgedirectory", help="MEGRE Directory")
+    parser.add_argument(
+        "-i",
+        "--input",
+        help="Directory with the input t2star-mge.nii.gz, "
+        "typically fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/01-Materials",
+    )
     parser.add_argument(
         "-m",
         "--mge",
         dest="MGEFilenames",
-        help="String for glob search of MGE volumes. Ex: /phcp/rawdata/sub/ses/anat/sub_ses_echo*_MEGRE.json",
+        help="String for glob search of MGE volume metadata, typically fov/rawdata/sub-${sub}/ses-${ses}/anat/'*_MEGRE.json'",
     )
     parser.add_argument(
-        "-o", "--outputDirectory", dest="outputDirectory", help="Output directory"
+        "-o",
+        "--outputDirectory",
+        dest="outputDirectory",
+        help="Output directory, typically fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/02-Results",
     )
     parser.add_argument(
         "-v",
@@ -228,7 +238,7 @@ def main(argv=sys.argv):
     args = parse_command_line(argv)
     return (
         runT2StarRelaxometryMapper(
-            args.mgedirectory, args.MGEFilenames, args.outputDirectory, args.verbose
+            args.input, args.MGEFilenames, args.outputDirectory, args.verbose
         )
         or 0
     )
