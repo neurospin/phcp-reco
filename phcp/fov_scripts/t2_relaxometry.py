@@ -2,33 +2,15 @@ import glob
 import json
 import logging
 import os
-import subprocess
 import sys
 
 import numpy as np
 import nibabel as ni
 
+from phcp.gkg import gkg_convert_gis_to_nifti
+
 
 logger = logging.getLogger(__name__)
-
-
-def ConversionGisToNifti(InputGisFilename, OutputNiftiFilename):
-    subprocess.run(
-        [
-            "singularity",
-            "exec",
-            "--bind",
-            "/neurospin:/neurospin:rw",
-            "/neurospin/phcp/code/gkg/2022-12-20_gkg/2022-12-20_gkg.sif",
-            "GkgExecuteCommand",
-            "Gis2NiftiConverter",
-            "-i",
-            InputGisFilename,
-            "-o",
-            OutputNiftiFilename,
-            "-verbose",
-        ]
-    )
 
 
 def create_ArrayFromGisFilename(GisFilename):
@@ -207,7 +189,7 @@ def runT2RelaxometryMapper(
     run_command(command)
 
     fileNameT2nifti = os.path.join(outputDirectory, "T2.nii.gz")
-    ConversionGisToNifti(fileNameT2, fileNameT2nifti)
+    gkg_convert_gis_to_nifti(fileNameT2, fileNameT2nifti, verbose=True)
 
     ni_im = create_ConfidenceMap(
         fileNameMSME, fileNameFittedMSME, fileNameMask, fileNameT2nifti

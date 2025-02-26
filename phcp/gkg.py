@@ -111,3 +111,29 @@ def run_gkg_GetMask(
         output_dirs=output_dirs,
         **kwargs,
     )
+
+
+def gkg_convert_gis_to_nifti(
+    input_gis: str, output_nifti: str, *, verbose=False, **kwargs
+) -> subprocess.CompletedProcess:
+    command = [
+        "GkgExecuteCommand",
+        "Gis2NiftiConverter",
+        "-i",
+        input_gis,
+        "-o",
+        output_nifti,
+    ]
+    if verbose:
+        command += ["-verbose"]
+
+    input_dir = os.path.dirname(input_gis)
+    output_dir = os.path.dirname(output_nifti)
+
+    return run_gkg_command(
+        command,
+        gkg_container_version="2022-12-20",
+        input_dirs=[input_dir],
+        output_dirs=[output_dir],
+        **kwargs,
+    )

@@ -11,20 +11,10 @@ import nibabel.processing as proc
 import ants
 from sklearn.mixture import GaussianMixture
 
+from phcp.gkg import gkg_convert_gis_to_nifti
+
 
 logger = logging.getLogger(__name__)
-
-
-def ConversionGisToNifti(InputGisFilename, OutputNiftiFilename):
-    os.system(
-        "singularity exec --bind /neurospin:/neurospin:rw "
-        + " /neurospin/phcp/code/gkg/2022-12-20_gkg/2022-12-20_gkg.sif "
-        + "GkgExecuteCommand Gis2NiftiConverter -i "
-        + InputGisFilename
-        + " -o "
-        + OutputNiftiFilename
-        + " -verbose"
-    )
 
 
 def create_ArrayFromGisFilename(GisFilename):
@@ -254,7 +244,7 @@ def correct_qt1(T1GisFilename, verbose=True):
     T1NiftiFilename = T1GisFilename.split(".")[0] + ".nii.gz"
 
     if not (os.path.exists(T1NiftiFilename)):
-        ConversionGisToNifti(T1GisFilename, T1NiftiFilename)
+        gkg_convert_gis_to_nifti(T1GisFilename, T1NiftiFilename, verbose=True)
 
     ants_T1img = ants.image_read(T1NiftiFilename)
     ants_T1img_mask = ants_T1img.get_mask()
@@ -338,7 +328,7 @@ def runT1RelaxometryMapper(
         )
         run_command(command)
 
-        ConversionGisToNifti(fileNameOutputT1, fileNameT1nifti)
+        gkg_convert_gis_to_nifti(fileNameOutputT1, fileNameT1nifti, verbose=True)
 
     fileNameConfidenceMap = os.path.join(outputDirectory, "T1ConfidenceMap.nii.gz")
 

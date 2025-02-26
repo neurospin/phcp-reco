@@ -11,18 +11,6 @@ import nibabel as ni
 logger = logging.getLogger(__name__)
 
 
-def ConversionGisToNifti(InputGisFilename, OutputNiftiFilename):
-    os.system(
-        "singularity exec --bind /neurospin:/neurospin:rw "
-        + " /neurospin/phcp/code/gkg/2022-12-20_gkg/2022-12-20_gkg.sif "
-        + "GkgExecuteCommand Gis2NiftiConverter -i "
-        + InputGisFilename
-        + " -o "
-        + OutputNiftiFilename
-        + " -verbose"
-    )
-
-
 def create_ArrayFromGisFilename(GisFilename):
     DimFilename = GisFilename[:-3] + "dim"
     TxtInDimFile = open(DimFilename, "r").read()
