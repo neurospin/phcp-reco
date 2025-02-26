@@ -267,7 +267,7 @@ def runT1RelaxometryMapper(
 
     fileNameMask = os.path.join(subjectDirectoryGisConversion, "mask.nii.gz")
     t1FileName = os.path.join(subjectDirectoryGisConversion, "t1_extracted.nii.gz")
-    fileNameB1 = os.path.join(subjectDirectoryGisConversion, "b1_registred.nii.gz")
+    fileNameB1 = os.path.join(subjectDirectoryGisConversion, "b1.nii.gz")
     fileNameTRValues = os.path.join(outputDirectory, "tr.txt")
     fileNameFAValues = os.path.join(outputDirectory, "fa.txt")
 
