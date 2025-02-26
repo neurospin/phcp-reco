@@ -10,14 +10,11 @@ import numpy as np
 import nibabel as ni
 
 from phcp.gkg import (
-    gkg_convert_gis_to_nifti,
     run_gkg_command,
     run_gkg_GetMask,
     run_gkg_SubVolume,
-    load_GIS_image,
-    arrange_ArrayToFlipHeaderFormat,
-    dearrange_ArrayToFlipHeaderFormat,
 )
+from phcp.image import nibabel_orient_like
 
 
 logger = logging.getLogger(__name__)
@@ -84,7 +81,7 @@ def createCommand_SingleCompartmentRelaxometryMapper(
         "-ascii",
         "False",
         "-format",
-        "gis",
+        "nifti",
         "-verbose",
         str(verbose),
     ]
@@ -103,26 +100,24 @@ def write_EchoTimes(fileNameTEValues, MSMEFilenames):
 def create_ConfidenceMap(
     fileNameMSME, fileNameFittedMSME, fileNameMask, fileNameT2nifti
 ):
-    arr_fittedmsme = load_GIS_image(fileNameFittedMSME)
-    arr_fittedmsme = arrange_ArrayToFlipHeaderFormat(arr_fittedmsme)
+    meta_fittedmsme = ni.load(fileNameFittedMSME)
+    arr_fittedmsme = meta_fittedmsme.get_fdata()
 
-    meta_t2msme = ni.load(fileNameMSME)
+    meta_t2msme = nibabel_orient_like(ni.load(fileNameMSME), meta_fittedmsme)
     arr_t2msme = meta_t2msme.get_fdata()
 
-    meta_mask_t2 = ni.load(fileNameMask)
+    meta_mask_t2 = nibabel_orient_like(ni.load(fileNameMask), meta_fittedmsme)
     arr_maskt2 = meta_mask_t2.get_fdata()
-    arr_maskt2 = arrange_ArrayToFlipHeaderFormat(arr_maskt2)
 
     diff = arr_fittedmsme - arr_t2msme
     std_diff = (
         np.std(diff[:, :, :, :10], axis=-1) * arr_maskt2
     )  # FIXME: magic parameter should be documented
 
-    meta_t2nifti = ni.load(fileNameT2nifti)
     ni_im = ni.Nifti1Image(
-        dearrange_ArrayToFlipHeaderFormat(std_diff),
-        meta_t2nifti.affine,
-        meta_t2nifti.header,
+        std_diff,
+        meta_fittedmsme.affine,
+        meta_fittedmsme.header,
     )
     return ni_im
 
@@ -160,9 +155,9 @@ def runT2RelaxometryMapper(
 
     write_EchoTimes(fileNameTEValues, MSMEFilenames)
 
-    fileNameProtonDensity = os.path.join(outputDirectory, "proton-density.ima")
-    fileNameFittedMSME = os.path.join(outputDirectory, "fitted-msme.ima")
-    fileNameT2 = os.path.join(outputDirectory, "T2.ima")
+    fileNameProtonDensity = os.path.join(outputDirectory, "proton-density.nii.gz")
+    fileNameFittedMSME = os.path.join(outputDirectory, "fitted-msme.nii.gz")
+    fileNameT2 = os.path.join(outputDirectory, "T2.nii.gz")
 
     command = createCommand_SingleCompartmentRelaxometryMapper(
         fileNameMSME,
@@ -180,11 +175,8 @@ def runT2RelaxometryMapper(
         output_dirs=[outputDirectory],
     )
 
-    fileNameT2nifti = os.path.join(outputDirectory, "T2.nii.gz")
-    gkg_convert_gis_to_nifti(fileNameT2, fileNameT2nifti, verbose=True)
-
     ni_im = create_ConfidenceMap(
-        fileNameMSME, fileNameFittedMSME, fileNameMask, fileNameT2nifti
+        fileNameMSME, fileNameFittedMSME, fileNameMask, fileNameT2
     )
     ni.save(ni_im, os.path.join(outputDirectory, "T2ConfidenceMap.nii.gz"))
     return None
