@@ -107,7 +107,7 @@ def createCommand_T2starSingleCompartmentRelaxometryMapper(
     return command
 
 
-def write_EchotTime(fileNameTEValues, MSMEFilenames):
+def write_EchoTimes(fileNameTEValues, MSMEFilenames):
     with open(fileNameTEValues, "w") as file:
         for metadata_filename in sorted(glob.iglob(MSMEFilenames)):
             with open(metadata_filename) as metadata_file:
@@ -176,7 +176,7 @@ def runT2StarRelaxometryMapper(
             output_dirs=[subjectDirectoryGisConversion],
         )
 
-    write_EchotTime(fileNameTEValues, MGEFilenames)
+    write_EchoTimes(fileNameTEValues, MGEFilenames)
 
     fileNameProtonDensity = os.path.join(outputDirectory, "proton-density.nii.gz")
     fileNameFittedMGE = os.path.join(outputDirectory, "fitted-mge.nii.gz")
