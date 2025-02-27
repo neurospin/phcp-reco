@@ -9,6 +9,7 @@ dependencies = [
   "numpy~=1.21",
   "nibabel~=3.2",
   "scipy~=1.8",
+  "antspyx~=0.4.0",
 ]
 
 [project.urls]
@@ -17,6 +18,9 @@ Homepage = "https://github.com/neurospin/phcp-reco"
 [project.scripts]
 phcp-fov-afi-b1mapping = "phcp.fov_scripts.AFI_B1mapping:main"
 phcp-brucker-preprocessing = "phcp.fov_scripts.BrukerPreprocessing:main"
+phcp-t1-relaxometry = "phcp.fov_scripts.t1_relaxometry:main"
+phcp-t2-relaxometry = "phcp.fov_scripts.t2_relaxometry:main"
+phcp-t2star-relaxometry = "phcp.fov_scripts.t2star_relaxometry:main"
 
 [tool.setuptools]
 packages = ["phcp"]

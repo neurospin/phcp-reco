@@ -72,6 +72,8 @@ fov/rawdata
             └── sub-{subjectID}_ses-{sessionID}_TB1AFI.nii.gz
 ```
 
+## The field-of-view processing pipeline
+
 ### Early pre-processing
 
 Early pre-processing of the raw data is performed with the `phcp-bruker-preprocessing` script, which includes:
@@ -166,7 +168,31 @@ fov/derivatives/gkg-Pipeline/
                 └── sub-{subjectID}_ses-{sessionID}_acq-b8000_dwi.nii.gz
 ```
 
-### Reconstructed FoV data
+### B1 mapping
+
+The transmit B1 field inhomogeneities are mapped using an Actual Flip Angle sequence. The following script reconstructs the B1 map from the AFI data. Parameters (TR1 and TR2) are not in the JSON metadata, they have to be passed manually but default values match the protocol.
+
+#### Inputs
+
+```
+fov/rawdata
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── fmap
+            ├── sub-{subjectID}_ses-{sessionID}_TB1AFI.json
+            └── sub-{subjectID}_ses-{sessionID}_TB1AFI.nii.gz
+```
+
+#### Usage
+
+```shell
+mkdir -p fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap
+phcp-fov-afi-b1mapping \
+    fov/rawdata/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1AFI.nii.gz \
+    fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz
+```
+
+#### Outputs
 
 ```
 fov/derivatives/fov-reconstructed
@@ -176,12 +202,138 @@ fov/derivatives/fov-reconstructed
             └── sub-{subjectID}_ses-{sessionID}_TB1map.nii.gz
 ```
 
-Reconstruction of the FoV data from the rawdata goes through the following steps:
+### T2* mapping
+
+#### Inputs
+
+```
+fov/rawdata
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── anat
+            ├── sub-{subjectID}_ses-{sessionID}_echo-{echo}_MEGRE.json
+            └── sub-{subjectID}_ses-{sessionID}_echo-{echo}_MEGRE.nii.gz
+```
+
+#### Usage
 
 ```shell
-phcp-fov-afi-b1mapping \
-    fov/rawdata/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1AFI.nii.gz \
-    fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz
+fslmerge -t fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/01-Materials/t2star-mge.nii.gz fov/rawdata/sub-${sub}/ses-${ses}/anat/*_MEGRE.nii.gz
+mkdir -p fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/02-Results
+phcp-t2star-relaxometry \
+    --input fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/01-Materials \
+    --mge fov/rawdata/sub-${sub}/ses-${ses}/anat/'*_MEGRE.json' \
+    --outputDirectory fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/02-Results
+```
+
+#### Outputs
+
+```
+fov/derivatives/T2starmapping
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── 02-Results
+            ├── proton-density.nii.gz
+            ├── fitted-mge.nii.gz
+            ├── T2star.nii.gz
+            └── T2starConfidenceMap.nii.gz
+```
+
+### T2 mapping
+
+#### Inputs
+
+```
+fov/rawdata
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── anat
+            ├── sub-{subjectID}_ses-{sessionID}_echo-{echo}_MESE.json
+            └── sub-{subjectID}_ses-{sessionID}_echo-{echo}_MESE.nii.gz
+```
+
+#### Usage
+
+```shell
+fslmerge -t fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/01-Materials/t2-msme.nii.gz fov/rawdata/sub-${sub}/ses-${ses}/anat/*_MESE.nii.gz
+mkdir -p fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/02-Results
+phcp-t2-relaxometry \
+    --input fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/01-Materials \
+    --msme fov/rawdata/sub-${sub}/ses-${ses}/anat/'*_MESE.json' \
+    --outputDirectory fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/02-Results
+```
+
+#### Outputs
+
+```
+fov/derivatives/T2mapping
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── 02-Results
+            ├── proton-density.nii.gz
+            ├── fitted-msme.nii.gz
+            ├── T2.nii.gz
+            └── T2ConfidenceMap.nii.gz
+```
+
+### T1 mapping
+
+#### Inputs
+
+```
+fov/rawdata
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── anat
+            └── sub-{subjectID}_ses-{sessionID}_flip-{fa}_VFA.json
+fov/derivatives/RGCorrection
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── sub-{subjectID}_ses-{sessionID}_VFA.nii.gz
+fov/derivatives/fov-reconstructed
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── fmap
+            └── sub-{subjectID}_ses-{sessionID}_TB1map.nii.gz
+```
+
+#### Usage
+
+```shell
+mkdir -p fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials
+cp fov/derivatives/RGCorrection/sub-${sub}/ses-${ses}/sub-${sub}_ses-${ses}_VFA.nii.gz \
+   fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials/t1map.nii.gz
+cp fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz \
+    fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials/b1.nii.gz
+mkdir -p fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/02-Results
+phcp-t1-relaxometry \
+    --input fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials \
+    --vfa fov/rawdata/sub-${sub}/ses-${ses}/anat/'*_VFA.json' \
+    --outputDirectory fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/02-Results
+```
+
+#### Outputs
+
+```
+fov/derivatives/T1mapping
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── 02-Results
+            ├── proton-density.nii.gz
+            ├── fitted-vfa.nii.gz
+            ├── T1.nii.gz
+            ├── T1_rec-unbiased.nii.gz
+            └── T1ConfidenceMap.nii.gz
+```
+
+### Outputs of the field-of-view processing pipeline
+
+```
+fov/derivatives/fov-reconstructed
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── fmap
+            └── sub-{subjectID}_ses-{sessionID}_TB1map.nii.gz
 ```
 
 ## Contributing

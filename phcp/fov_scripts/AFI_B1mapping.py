@@ -28,6 +28,7 @@ from scipy.ndimage import binary_erosion
 
 from phcp.fsl import run_fsl_command
 from phcp.gkg import run_gkg_GetMask
+from phcp.image import nibabel_orient_like
 
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,9 @@ def compute_raw_B1map(
         res = safeAcos((r * n - 1) / (n - r)) * (
             180 / (60 * np.pi)
         )  # Yarnykh, V. L. (2007).
-    nibabel.save(nibabel.Nifti1Image(res, meta.affine), B1map_filename)
+    header = meta.header.copy()
+    header.set_data_dtype(np.float32)
+    nibabel.save(nibabel.Nifti1Image(res, meta.affine, header), B1map_filename)
 
 
 def compute_mask_from_AFI(
@@ -95,20 +98,12 @@ def compute_mask_from_AFI(
     nibabel.save(ni_im, maskEroded)
 
 
-def nibabel_orient_like(
-    img: nibabel.spatialimages.SpatialImage, ref: nibabel.spatialimages.SpatialImage
-) -> nibabel.spatialimages.SpatialImage:
-    img_ornt = nibabel.orientations.io_orientation(img.affine)
-    ref_ornt = nibabel.orientations.io_orientation(ref.affine)
-    return img.as_reoriented(nibabel.orientations.ornt_transform(img_ornt, ref_ornt))
-
-
 def apply_mask_to_B1(maskErodeFilename: str, b1Filename: str, output: str) -> None:
     meta_B1 = nibabel.load(b1Filename)
     meta_maskcorr = nibabel_orient_like(nibabel.load(maskErodeFilename), meta_B1)
     arr_maskcorr = meta_maskcorr.get_fdata()
     arr_res = meta_B1.get_fdata() * arr_maskcorr
-    ni_im = nibabel.Nifti1Image(arr_res, meta_B1.affine)
+    ni_im = nibabel.Nifti1Image(arr_res, meta_B1.affine, meta_B1.header)
     nibabel.save(ni_im, output)
 
 
@@ -129,7 +124,7 @@ def scale_to_900_and_filter(
     )  # Neutral value is 900 in Gkg toolbox (Siemens standards)
     arr_filtered = np.where(arr < 5.0, 900, arr)
     ni_im = nibabel.Nifti1Image(
-        np.where(np.isnan(arr_filtered), 900, arr_filtered), meta.affine
+        np.where(np.isnan(arr_filtered), 900, arr_filtered), meta.affine, meta.header
     )
     nibabel.save(ni_im, b1CropDilMNeutralFilename)
 
