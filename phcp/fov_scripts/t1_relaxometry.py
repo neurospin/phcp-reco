@@ -38,7 +38,9 @@ def VFAregister(img_filename, output_filename, verbose):
     registered_volumes.append(ANTS_fixed_image)
 
     for i in range(1, volume_number):
-        logger.info("========= Registration volume n°%d =========", i)
+        logger.info(
+            "========= Registration volume n°%d / %d =========", i + 1, volume_number
+        )
         ANTS_moving_image = ants.from_numpy(arr_4D[:, :, :, i])
         registration = ants.registration(
             ANTS_fixed_image,
@@ -52,6 +54,7 @@ def VFAregister(img_filename, output_filename, verbose):
         warped_image = registration["warpedmovout"]
         registered_volumes.append(warped_image)
 
+    logger.info("========= Concatenating and writing the registered VFA =========")
     registered_data = np.stack([img.numpy() for img in registered_volumes], axis=-1)
     ni_im = ni.Nifti1Image(registered_data, img_4D.affine)
     ni.save(ni_im, output_filename)
