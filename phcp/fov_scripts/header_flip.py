@@ -1,59 +1,40 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Apr  4 10:32:37 2023
-
-@author: la272118
-"""
-
 import glob
-import optparse
+import logging
 import os
 import shutil
+import sys
+
 import nibabel as ni
 import numpy as np
 
 
-def ValueExtractor(sesDirectory, outputDirectory):
+logger = logging.getLogger(__name__)
+
+
+def flip_headers(sesDirectory, outputDirectory):
     SessionOutputDir = os.path.join(outputDirectory, sesDirectory.split("/")[-2])
     if not os.path.exists(SessionOutputDir):
         os.mkdir(SessionOutputDir)
 
     modalitiesDirectory = glob.iglob(os.path.join(sesDirectory, "*"))
     session = sesDirectory.split("/")[-2]
-    print("================================")
-    print("  Début de la session " + session)
-    print("================================")
+    logger.info("Processing session %s", session)
     for modality in modalitiesDirectory:
         ModOutputDir = os.path.join(outputDirectory, session, modality.split("/")[-1])
         if not os.path.exists(ModOutputDir):
             os.mkdir(ModOutputDir)
 
         filenamesDirectory = glob.iglob(os.path.join(modality, "*.nii.gz"))
-        print("================================")
-        print("  Début de la modalité " + modality.split("/")[-1])
-        print("================================")
-
+        logger.info("Processing modality %s", modality.split("/")[-1])
         for volume in filenamesDirectory:
-            print("================================")
-            print("  Début de la conversion de " + volume.split("/")[-1])
-            print("================================")
-            if not (
-                os.path.exists(
-                    os.path.join(
-                        outputDirectory,
-                        session,
-                        modality.split("/")[-1],
-                        volume.split("/")[-1],
-                    )
-                )
-            ):
-                outputFilename = os.path.join(
-                    outputDirectory,
-                    session,
-                    modality.split("/")[-1],
-                    volume.split("/")[-1],
-                )
+            logger.info("Converting %s", volume.split("/")[-1])
+            outputFilename = os.path.join(
+                outputDirectory,
+                session,
+                modality.split("/")[-1],
+                volume.split("/")[-1],
+            )
+            if not os.path.exists(outputFilename):
                 meta = ni.load(volume)
                 matRotation = np.array(
                     [[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]]
@@ -61,8 +42,6 @@ def ValueExtractor(sesDirectory, outputDirectory):
                 ni_im = ni.Nifti1Image(
                     meta.get_fdata(), np.dot(matRotation, meta.affine), meta.header
                 )
-                # meta.affine=np.dot(matRotation, meta.affine) #Serait plus rapide mais ne change pas les axes dans anatomist
-                # ni.save(meta, outputFilename)
                 ni.save(ni_im, outputFilename)
 
             JsonFilename = os.path.join(
@@ -70,43 +49,48 @@ def ValueExtractor(sesDirectory, outputDirectory):
                 modality.split("/")[-1],
                 (volume.split("/")[-1]).split(".")[0] + ".json",
             )
-
-            if os.path.exists(JsonFilename) and not (
-                os.path.exists(
-                    os.path.join(
-                        outputDirectory,
-                        session,
-                        modality.split("/")[-1],
-                        (volume.split("/")[-1]).split(".")[0] + ".json",
-                    )
-                )
-            ):
-                outputJsonFilename = os.path.join(
-                    outputDirectory,
-                    session,
-                    modality.split("/")[-1],
-                    (volume.split("/")[-1]).split(".")[0] + ".json",
-                )
+            outputJsonFilename = os.path.join(
+                outputDirectory,
+                session,
+                modality.split("/")[-1],
+                (volume.split("/")[-1]).split(".")[0] + ".json",
+            )
+            if os.path.exists(JsonFilename) and not os.path.exists(outputJsonFilename):
                 shutil.copy(JsonFilename, outputJsonFilename)
 
 
-################################################################################
-# parser to get option(s)
-################################################################################
+def parse_command_line(argv):
+    """Parse the script's command line."""
+    import argparse
 
-parser = optparse.OptionParser()
-parser.add_option(
-    "-i", "--subDirectory", dest="subDirectory", help="Subject file to flip directory"
-)
-parser.add_option(
-    "-o", "--outputDirectory", dest="outputDirectory", help="Output directory"
-)
+    parser = argparse.ArgumentParser(
+        description='Rewrite the Nifti header transforms for a whole session, so that the axes of the new "scanner-based" '
+        "referential correspond to sensible anatomical orientations. This is done so that visualizing the images the usual "
+        "viewers will display the brain in a sensible orientation. We cannot do this at acquisition time because the "
+        "console software does not allow us to input the real orientation of the tissue block, so we default to choosing "
+        '"head first supine" (HFS).',
+    )
+    parser.add_argument(
+        "-i",
+        "--sessionDirectory",
+        help="input session directory, e.g. fov/rawdata/sub-${sub}/ses-${ses}",
+    )
+    parser.add_argument(
+        "-o",
+        "--outputDirectory",
+        help="top-level output BIDS directory, e.g. fov/headerfliprawdata",
+    )
 
-(options, args) = parser.parse_args()
+    args = parser.parse_args()
+    return args
 
 
-################################################################################
-# 1) Value Extractor
-################################################################################
+def main(argv=sys.argv):
+    """The script's entry point."""
+    logging.basicConfig(level=logging.INFO)
+    args = parse_command_line(argv)
+    return flip_headers(args.sessionDirectory, args.outputDirectory) or 0
 
-ValueExtractor(options.subDirectory, options.outputDirectory)
+
+if __name__ == "__main__":
+    sys.exit(main())
