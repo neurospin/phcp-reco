@@ -192,14 +192,6 @@ phcp-fov-afi-b1mapping \
     fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz
 ```
 
-The T1 mapping script expects to find the B1 map in a specific location, so you should copy the map over:
-
-```shell
-mkdir -p fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials
-cp fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz \
-    fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials/b1.nii.gz
-```
-
 #### Outputs
 
 ```
@@ -208,11 +200,6 @@ fov/derivatives/fov-reconstructed
     └── ses-{sessionID}
         └── fmap
             └── sub-{subjectID}_ses-{sessionID}_TB1map.nii.gz
-fov/derivatives/T1mapping
-└── sub-{subjectID}
-    └── ses-{sessionID}
-        └── 01-Materials
-            └── b1.nii.gz
 ```
 
 ### T2* mapping
@@ -303,18 +290,21 @@ fov/derivatives/RGCorrection
 └── sub-{subjectID}
     └── ses-{sessionID}
         └── sub-{subjectID}_ses-{sessionID}_VFA.nii.gz
-fov/derivatives/T1mapping
+fov/derivatives/fov-reconstructed
 └── sub-{subjectID}
     └── ses-{sessionID}
-        └── 01-Materials
-            └── b1.nii.gz
+        └── fmap
+            └── sub-{subjectID}_ses-{sessionID}_TB1map.nii.gz
 ```
 
 #### Usage
 
 ```shell
+mkdir -p fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials
 cp fov/derivatives/RGCorrection/sub-${sub}/ses-${ses}/sub-${sub}_ses-${ses}_VFA.nii.gz \
    fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials/t1map.nii.gz
+cp fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz \
+    fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials/b1.nii.gz
 mkdir -p fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/02-Results
 phcp-t1-relaxometry \
     --input fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials \
