@@ -174,6 +174,8 @@ def runT2RelaxometryMapper(
         input_dirs=[subjectDirectoryGisConversion],
         output_dirs=[outputDirectory],
     )
+    # FIXME: outputs have incorrect qform (no translation despite seemingly
+    # correct rotation) and grossly incorrect sform (no scale, no translation)
 
     ni_im = create_ConfidenceMap(
         fileNameMSME, fileNameFittedMSME, fileNameMask, fileNameT2

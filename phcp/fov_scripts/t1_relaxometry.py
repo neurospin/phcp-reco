@@ -331,6 +331,8 @@ def runT1RelaxometryMapper(
             input_dirs=[subjectDirectoryGisConversion],
             output_dirs=[outputDirectory],
         )
+        # FIXME: outputs have incorrect qform (no translation despite seemingly
+        # correct rotation) and grossly incorrect sform (no scale, no translation)
 
     fileNameConfidenceMap = os.path.join(outputDirectory, "T1ConfidenceMap.nii.gz")
 
