@@ -341,15 +341,23 @@ def parse_command_line(argv):
     parser = argparse.ArgumentParser(
         description="reconstruct T1 relaxometry based on the Variable Flip Angle method",
     )
-    parser.add_argument("-i", "--input", dest="vfadirectory", help="VFA Directory")
+    parser.add_argument(
+        "-i",
+        "--input",
+        help="Directory with the inputs t1map.nii.gz and b1.nii.gz, "
+        + "typically fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials",
+    )
     parser.add_argument(
         "-m",
         "--vfa",
         dest="VFAFilenames",
-        help="String for glob search of VFA volumes. Ex: /phcp/rawdata/sub/ses/anat/sub_ses_flip*_VFA.json",
+        help="String for glob search of VFA volume metadata, typically fov/rawdata/sub-${sub}/ses-${ses}/anat/'*_VFA.json'",
     )
     parser.add_argument(
-        "-o", "--outputDirectory", dest="outputDirectory", help="Output directory"
+        "-o",
+        "--outputDirectory",
+        dest="outputDirectory",
+        help="Output directory, typically fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/02-Results",
     )
     parser.add_argument(
         "-v",
@@ -377,7 +385,7 @@ def main(argv=sys.argv):
     args = parse_command_line(argv)
     return (
         runT1RelaxometryMapper(
-            args.vfadirectory, args.VFAFilenames, args.outputDirectory, args.verbose
+            args.input, args.VFAFilenames, args.outputDirectory, args.verbose
         )
         or 0
     )

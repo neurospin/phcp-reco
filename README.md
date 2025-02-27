@@ -289,6 +289,53 @@ fov/derivatives/T2mapping
             └── T2ConfidenceMap.nii.gz
 ```
 
+### T1 mapping
+
+#### Inputs
+
+```
+fov/rawdata
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── anat
+            └── sub-{subjectID}_ses-{sessionID}_flip-{fa}_VFA.json
+fov/derivatives/RGCorrection
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── sub-{subjectID}_ses-{sessionID}_VFA.nii.gz
+fov/derivatives/T1mapping
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── 01-Materials
+            └── b1.nii.gz
+```
+
+#### Usage
+
+```shell
+cp fov/derivatives/RGCorrection/sub-${sub}/ses-${ses}/sub-${sub}_ses-${ses}_VFA.nii.gz \
+   fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials/t1map.nii.gz
+mkdir -p fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/02-Results
+phcp-t1-relaxometry \
+    --input fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials \
+    --vfa fov/rawdata/sub-${sub}/ses-${ses}/anat/'*_VFA.json' \
+    --outputDirectory fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/02-Results
+```
+
+#### Outputs
+
+```
+fov/derivatives/T1mapping
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── 02-Results
+            ├── proton-density.nii.gz
+            ├── fitted-vfa.nii.gz
+            ├── T1.nii.gz
+            ├── T1_rec-unbiased.nii.gz
+            └── T1ConfidenceMap.nii.gz
+```
+
 ### Outputs of the field-of-view processing pipeline
 
 ```
