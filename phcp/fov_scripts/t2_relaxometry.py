@@ -205,7 +205,7 @@ def parse_command_line(argv):
         "-o",
         "--outputDirectory",
         dest="outputDirectory",
-        help="Output directory, typically fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/02-Results",
+        help="Output directory, typically fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/02-Results",
     )
     parser.add_argument(
         "-v",
