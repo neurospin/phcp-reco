@@ -13,15 +13,13 @@ import nibabel.processing as proc
 import ants
 from sklearn.mixture import GaussianMixture
 
+from phcp.fsl import run_fsl_command
 from phcp.gkg import (
-    gkg_convert_gis_to_nifti,
     run_gkg_command,
     run_gkg_GetMask,
     run_gkg_SubVolume,
-    load_GIS_image,
-    arrange_ArrayToFlipHeaderFormat,
-    dearrange_ArrayToFlipHeaderFormat,
 )
+from phcp.image import nibabel_orient_like
 
 
 logger = logging.getLogger(__name__)
@@ -127,7 +125,7 @@ def createCommand_T1SingleCompartmentRelaxometryMapper(
         "-ascii",
         "False",
         "-format",
-        "gis",
+        "nifti",
         "-verbose",
         str(verbose),
     ]
@@ -151,28 +149,23 @@ def write_TR_FA(fileNameFAValues, fileNameTRValues, FAFilenames, fileNameB1):
     return None
 
 
-def create_ConfidenceMap(
-    fileNameVFACat, fileNameFittedVFA, fileNameMask, fileNameT1nifti
-):
-    arr_fittedvfa = load_GIS_image(fileNameFittedVFA)
-    arr_fittedvfa = arrange_ArrayToFlipHeaderFormat(arr_fittedvfa)
+def create_ConfidenceMap(fileNameVFACat, fileNameFittedVFA, fileNameMask):
+    meta_fittedvfa = ni.load(fileNameFittedVFA)
+    arr_fittedvfa = meta_fittedvfa.get_fdata()
 
-    meta_vfa = ni.load(fileNameVFACat)
+    meta_vfa = nibabel_orient_like(ni.load(fileNameVFACat), meta_fittedvfa)
     arr_vfa = meta_vfa.get_fdata()
 
-    meta_mask = ni.load(fileNameMask)
+    meta_mask = nibabel_orient_like(ni.load(fileNameMask), meta_fittedvfa)
     arr_mask = meta_mask.get_fdata()
-    arr_mask = arrange_ArrayToFlipHeaderFormat(arr_mask)
 
     diff = arr_fittedvfa - arr_vfa
     std_diff = np.std(diff, axis=-1) * arr_mask
 
-    metaT1nifti = ni.load(fileNameT1nifti)
-
     ni_im = ni.Nifti1Image(
-        dearrange_ArrayToFlipHeaderFormat(std_diff),
-        metaT1nifti.affine,
-        metaT1nifti.header,
+        std_diff,
+        meta_fittedvfa.affine,
+        meta_fittedvfa.header,
     )
     return ni_im
 
@@ -213,13 +206,10 @@ def create_NewBiasField(biasField):
     )
 
 
-def correct_qt1(T1GisFilename, verbose=True):
+def correct_qt1(T1NiftiFilename, verbose=True):
     logger.info("Loading data")
 
-    T1NiftiFilename = T1GisFilename.split(".")[0] + ".nii.gz"
-
-    if not (os.path.exists(T1NiftiFilename)):
-        gkg_convert_gis_to_nifti(T1GisFilename, T1NiftiFilename, verbose=True)
+    T1_basename = T1NiftiFilename.split(".")[0]
 
     ants_T1img = ants.image_read(T1NiftiFilename)
     ants_T1img_mask = ants_T1img.get_mask()
@@ -228,7 +218,7 @@ def correct_qt1(T1GisFilename, verbose=True):
 
     biasField = extract_BiasField(ants_T1img, ants_T1img_mask, verbose)
 
-    ants.image_write(biasField, T1GisFilename.split(".")[0] + "BiasField1.nii.gz")
+    ants.image_write(biasField, T1_basename + "BiasField1.nii.gz")
 
     logger.info("New Bias Field Generation")
 
@@ -241,7 +231,7 @@ def correct_qt1(T1GisFilename, verbose=True):
     logger.info("Smoothing part")
 
     newbiasField_smooth = proc.smooth_image(ni_im, fwhm)
-    newbiasField_smooth_Filename = T1GisFilename.split(".")[0] + "_BiasField.nii.gz"
+    newbiasField_smooth_Filename = T1_basename + "_BiasField.nii.gz"
     ni.save(newbiasField_smooth, newbiasField_smooth_Filename)
 
     newbiasField_smooth = ants.from_nibabel(newbiasField_smooth)
@@ -250,7 +240,7 @@ def correct_qt1(T1GisFilename, verbose=True):
 
     logger.info("Saving Part")
 
-    T1Nifti_unbiased_Filename = T1GisFilename.split(".")[0] + "_rec-unbiased.nii.gz"
+    T1Nifti_unbiased_Filename = T1_basename + "_rec-unbiased.nii.gz"
 
     ants.image_write(unbiased_T1, T1Nifti_unbiased_Filename)
     return None
@@ -271,6 +261,9 @@ def runT1RelaxometryMapper(
     fileNameMask = os.path.join(subjectDirectoryGisConversion, "mask.nii.gz")
     t1FileName = os.path.join(subjectDirectoryGisConversion, "t1_extracted.nii.gz")
     fileNameB1 = os.path.join(subjectDirectoryGisConversion, "b1.nii.gz")
+    fileNameB1inVFAspace = os.path.join(
+        subjectDirectoryGisConversion, "b1_in_vfa_space.nii.gz"
+    )
     fileNameTRValues = os.path.join(outputDirectory, "tr.txt")
     fileNameFAValues = os.path.join(outputDirectory, "fa.txt")
 
@@ -295,20 +288,38 @@ def runT1RelaxometryMapper(
             output_dirs=[subjectDirectoryGisConversion],
         )
 
-    fileNameT1nifti = os.path.join(outputDirectory, "T1.nii.gz")
-    fileNameProtonDensity = os.path.join(outputDirectory, "proton-density.ima")
-    fileNameFittedVFA = os.path.join(outputDirectory, "fitted-vfa.ima")
-    fileNameOutputT1 = os.path.join(outputDirectory, "T1.ima")
+    if not os.path.exists(fileNameB1inVFAspace):
+        run_fsl_command(
+            [
+                "flirt",
+                "-applyxfm",
+                "-usesqform",
+                "-interp",
+                "trilinear",
+                "-in",
+                fileNameB1,
+                "-ref",
+                fileNameVFACat,
+                "-out",
+                fileNameB1inVFAspace,
+            ]
+        )
 
-    if not (os.path.exists(fileNameT1nifti)):
-        write_TR_FA(fileNameFAValues, fileNameTRValues, FAFilenames, fileNameB1)
+    fileNameProtonDensity = os.path.join(outputDirectory, "proton-density.nii.gz")
+    fileNameFittedVFA = os.path.join(outputDirectory, "fitted-vfa.nii.gz")
+    fileNameOutputT1 = os.path.join(outputDirectory, "T1.nii.gz")
+
+    if not (os.path.exists(fileNameOutputT1)):
+        write_TR_FA(
+            fileNameFAValues, fileNameTRValues, FAFilenames, fileNameB1inVFAspace
+        )
 
         command = createCommand_T1SingleCompartmentRelaxometryMapper(
             fileNameVFACat,
             fileNameMask,
             fileNameTRValues,
             fileNameFAValues,
-            fileNameB1,
+            fileNameB1inVFAspace,
             fileNameProtonDensity,
             fileNameOutputT1,
             fileNameFittedVFA,
@@ -321,14 +332,10 @@ def runT1RelaxometryMapper(
             output_dirs=[outputDirectory],
         )
 
-        gkg_convert_gis_to_nifti(fileNameOutputT1, fileNameT1nifti, verbose=True)
-
     fileNameConfidenceMap = os.path.join(outputDirectory, "T1ConfidenceMap.nii.gz")
 
     if not (os.path.exists(fileNameConfidenceMap)):
-        ni_im = create_ConfidenceMap(
-            fileNameVFACat, fileNameFittedVFA, fileNameMask, fileNameT1nifti
-        )
+        ni_im = create_ConfidenceMap(fileNameVFACat, fileNameFittedVFA, fileNameMask)
         ni.save(ni_im, fileNameConfidenceMap)
 
     logger.info("Correction Part")
