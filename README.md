@@ -168,9 +168,9 @@ Additionally, the “subject file”, whose name is free but suggested to be in 
 phcp-brucker-preprocessing \
     --sourcedata fov/sourcedata \
     --rawdata fov/headerfliprawdata \
-    --derivatices fov/derivatives \
-    --subject descriptions/sub-{subjectID}.json \
-    --descriptions descriptions/sub-{subjectID}
+    --derivatives fov/derivatives \
+    --subject derivatives/gkg-Pipeline/PreprocessingDescriptions/sub-${sub}.json \
+    --descriptions derivatives/gkg-Pipeline/PreprocessingDescriptions/sub-${sub}
 ```
 
 #### Outputs

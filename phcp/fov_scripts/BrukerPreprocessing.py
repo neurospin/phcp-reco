@@ -75,7 +75,7 @@ def print_message(message):
 
 # Creates bvec and bvac files in 'rawdata' storage space
 # from files output from MRI console (DICOM)
-def runBvecAndBvalWritter(
+def runBvecAndBvalWriter(
     SourceDataDirectory, RawDataDirecctory, Subject, Session, DescriptionFilename
 ):
     with open(DescriptionFilename, "r") as p:
@@ -172,7 +172,7 @@ def read_rg(acqp_filename):
     return rg
 
 
-def runRGWritter(
+def runRGWriter(
     RawDataDirectory,
     SourceDataDirectory,
     SaveDirectory,
@@ -487,9 +487,9 @@ def bruker_preprocessing(
                 with open(BvalueKeyNumberFileValue_json, "r") as p:
                     BvalueKeyNumberFileValue_dict = json.load(p)
 
-                print_message("Run BvecAndBvalWritter")
+                print_message("Run BvecAndBvalWriter")
 
-                runBvecAndBvalWritter(
+                runBvecAndBvalWriter(
                     SourcedataDirectory,
                     RawdataDirectory,
                     subject,
@@ -544,9 +544,9 @@ def bruker_preprocessing(
             RGCorrectionDirectory = os.path.join(DerivativesDirectory, "RGCorrection")
             os.makedirs(RGCorrectionDirectory, exist_ok=True)
 
-            print_message("Run RGWritter")
+            print_message("Run RGWriter")
 
-            runRGWritter(
+            runRGWriter(
                 RawdataDirectory,
                 SourcedataDirectory,
                 RGCorrectionDirectory,
@@ -577,21 +577,41 @@ def parse_command_line(argv):
     """Parse the script's command line."""
     import argparse
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-s", "--sourcedata", dest="sourcedata", help="Sourcedata directory. "
-    )
-    parser.add_argument("-r", "--rawdata", dest="rawdata", help="Rawdata directory.")
-    parser.add_argument(
-        "-d", "--derivatices", dest="derivatices", help="Dérivatives directory. "
+    parser = argparse.ArgumentParser(
+        "Early pre-processings that require access to the Bruker raw data: extraction "
+        "of b-values and b-vectors, and receivergain correction. Refer to the "
+        "repository's README for detailed usage instructions."
     )
     parser.add_argument(
-        "-q", "--subject", dest="subject", help="Subject JSON filename. "
+        "-s",
+        "--sourcedata",
+        dest="sourcedata",
+        help="Sourcedata directory, e.g. fov/sourcedata",
     )
     parser.add_argument(
-        "-p", "--descriptions", dest="descriptions", help="Descriptions directory. "
+        "-r",
+        "--rawdata",
+        dest="rawdata",
+        help="Rawdata directory, e.g. fov/headerfliprawdata",
     )
-    parser.add_argument("--work-dir", type=str, default=None)
+    parser.add_argument(
+        "-d",
+        "--derivatives",
+        dest="derivatives",
+        help="Derivatives directory, e.g. fov/derivatives",
+    )
+    parser.add_argument(
+        "-q",
+        "--subject",
+        dest="subject",
+        help="Subject JSON filename, e.g. derivatives/gkg-Pipeline/PreprocessingDescriptions/sub-${sub}.json",
+    )
+    parser.add_argument(
+        "-p",
+        "--descriptions",
+        dest="descriptions",
+        help="Descriptions directory, e.g. derivatives/gkg-Pipeline/PreprocessingDescriptions/sub-${sub}",
+    )
 
     args = parser.parse_args()
     return args
@@ -605,7 +625,7 @@ def main(argv=sys.argv):
         bruker_preprocessing(
             args.sourcedata,
             args.rawdata,
-            args.derivatices,
+            args.derivatives,
             args.subject,
             args.descriptions,
         )
