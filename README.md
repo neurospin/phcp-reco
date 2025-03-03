@@ -72,6 +72,45 @@ fov/rawdata
             └── sub-{subjectID}_ses-{sessionID}_TB1AFI.nii.gz
 ```
 
+### Header-flipped raw data
+
+The spatial transformation contained in the DICOM metadata, and thus Nifti `rawdata`, does not match the anatomical axes. The reason is that the ParaVision software does not allow us to input the real orientation of the tissue block in the scanner, so we default to choosing "head first supine" (HFS). Therefore, prior to any further processing we flip the the Nifti header transforms, so that the axes of the new "scanner-based" referential correspond to sensible anatomical orientations. This is done so that visualizing the images the usual viewers will display the brain in a sensible orientation.
+
+The `phcp-header-flip` script will mirror the BIDS structure of the provided `rawdata` in a new `headerfliprawdata` directory.
+
+#### Usage
+
+```shell
+phcp-header-flip \
+    --sessionDirectory fov/rawdata/sub-${sub}/ses-${ses} \
+    --outputDirectory fov/headerfliprawdata
+```
+
+#### Outputs
+
+
+```
+fov/headerfliprawdata
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        ├── anat
+        │   ├── sub-{subjectID}_ses-{sessionID}_echo-{echo}_MEGRE.json
+        │   ├── sub-{subjectID}_ses-{sessionID}_echo-{echo}_MEGRE.nii.gz
+        │   ├── sub-{subjectID}_ses-{sessionID}_echo-{echo}_MESE.json
+        │   ├── sub-{subjectID}_ses-{sessionID}_echo-{echo}_MESE.nii.gz
+        │   ├── sub-{subjectID}_ses-{sessionID}_flip-{fa}_VFA.json
+        │   ├── sub-{subjectID}_ses-{sessionID}_flip-{fa}_VFA.nii.gz
+        │   ├── sub-{subjectID}_ses-{sessionID}_T2w.json
+        │   └── sub-{subjectID}_ses-{sessionID}_T2w.nii.gz
+        ├── dwi
+        │   ├── sub-{subjectID}_ses-{sessionID}_acq-{bval}_run-{run}_dwi.json
+        │   ├── sub-{subjectID}_ses-{sessionID}_acq-{bval}_run-{run}_dwi.nii.gz
+        └── fmap
+            ├── sub-{subjectID}_ses-{sessionID}_TB1AFI.json
+            └── sub-{subjectID}_ses-{sessionID}_TB1AFI.nii.gz
+```
+
+
 ## The field-of-view processing pipeline
 
 ### Early pre-processing
@@ -128,16 +167,16 @@ Additionally, the “subject file”, whose name is free but suggested to be in 
 ```shell
 phcp-brucker-preprocessing \
     --sourcedata fov/sourcedata \
-    --rawdata fov/rawdata \
-    --derivatices fov/derivatives \
-    --subject descriptions/sub-{subjectID}.json \
-    --descriptions descriptions/sub-{subjectID}
+    --rawdata fov/headerfliprawdata \
+    --derivatives fov/derivatives \
+    --subject derivatives/gkg-Pipeline/PreprocessingDescriptions/sub-${sub}.json \
+    --descriptions derivatives/gkg-Pipeline/PreprocessingDescriptions/sub-${sub}
 ```
 
 #### Outputs
 
 ```
-fov/rawdata
+fov/headerfliprawdata
 └── sub-{subjectID}
     └── ses-{sessionID}
         └── dwi
@@ -175,7 +214,7 @@ The transmit B1 field inhomogeneities are mapped using an Actual Flip Angle sequ
 #### Inputs
 
 ```
-fov/rawdata
+fov/headerfliprawdata
 └── sub-{subjectID}
     └── ses-{sessionID}
         └── fmap
@@ -188,7 +227,7 @@ fov/rawdata
 ```shell
 mkdir -p fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap
 phcp-fov-afi-b1mapping \
-    fov/rawdata/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1AFI.nii.gz \
+    fov/headerfliprawdata/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1AFI.nii.gz \
     fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz
 ```
 
@@ -207,7 +246,7 @@ fov/derivatives/fov-reconstructed
 #### Inputs
 
 ```
-fov/rawdata
+fov/headerfliprawdata
 └── sub-{subjectID}
     └── ses-{sessionID}
         └── anat
@@ -218,11 +257,12 @@ fov/rawdata
 #### Usage
 
 ```shell
-fslmerge -t fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/01-Materials/t2star-mge.nii.gz fov/rawdata/sub-${sub}/ses-${ses}/anat/*_MEGRE.nii.gz
+mkdir -p fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/01-Materials
+fslmerge -t fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/01-Materials/t2star-mge.nii.gz fov/headerfliprawdata/sub-${sub}/ses-${ses}/anat/*_MEGRE.nii.gz
 mkdir -p fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/02-Results
 phcp-t2star-relaxometry \
     --input fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/01-Materials \
-    --mge fov/rawdata/sub-${sub}/ses-${ses}/anat/'*_MEGRE.json' \
+    --mge fov/headerfliprawdata/sub-${sub}/ses-${ses}/anat/'*_MEGRE.json' \
     --outputDirectory fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/02-Results
 ```
 
@@ -244,7 +284,7 @@ fov/derivatives/T2starmapping
 #### Inputs
 
 ```
-fov/rawdata
+fov/headerfliprawdata
 └── sub-{subjectID}
     └── ses-{sessionID}
         └── anat
@@ -255,11 +295,12 @@ fov/rawdata
 #### Usage
 
 ```shell
-fslmerge -t fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/01-Materials/t2-msme.nii.gz fov/rawdata/sub-${sub}/ses-${ses}/anat/*_MESE.nii.gz
+mkdir -p fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/01-Materials
+fslmerge -t fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/01-Materials/t2-msme.nii.gz fov/headerfliprawdata/sub-${sub}/ses-${ses}/anat/*_MESE.nii.gz
 mkdir -p fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/02-Results
 phcp-t2-relaxometry \
     --input fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/01-Materials \
-    --msme fov/rawdata/sub-${sub}/ses-${ses}/anat/'*_MESE.json' \
+    --msme fov/headerfliprawdata/sub-${sub}/ses-${ses}/anat/'*_MESE.json' \
     --outputDirectory fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/02-Results
 ```
 
@@ -281,7 +322,7 @@ fov/derivatives/T2mapping
 #### Inputs
 
 ```
-fov/rawdata
+fov/headerfliprawdata
 └── sub-{subjectID}
     └── ses-{sessionID}
         └── anat
@@ -308,7 +349,7 @@ cp fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-$
 mkdir -p fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/02-Results
 phcp-t1-relaxometry \
     --input fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials \
-    --vfa fov/rawdata/sub-${sub}/ses-${ses}/anat/'*_VFA.json' \
+    --vfa fov/headerfliprawdata/sub-${sub}/ses-${ses}/anat/'*_VFA.json' \
     --outputDirectory fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/02-Results
 ```
 
