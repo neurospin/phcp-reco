@@ -523,7 +523,6 @@ def bruker_preprocessing(
                         )
 
                     MaterialsDirectory = os.path.join(
-                        "/neurospin/phcp",
                         DerivativesDirectory,
                         "gkg-Pipeline",
                         subject,
