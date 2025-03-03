@@ -257,6 +257,7 @@ fov/headerfliprawdata
 #### Usage
 
 ```shell
+mkdir -p fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/01-Materials
 fslmerge -t fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/01-Materials/t2star-mge.nii.gz fov/headerfliprawdata/sub-${sub}/ses-${ses}/anat/*_MEGRE.nii.gz
 mkdir -p fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/02-Results
 phcp-t2star-relaxometry \
@@ -294,6 +295,7 @@ fov/headerfliprawdata
 #### Usage
 
 ```shell
+mkdir -p fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/01-Materials
 fslmerge -t fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/01-Materials/t2-msme.nii.gz fov/headerfliprawdata/sub-${sub}/ses-${ses}/anat/*_MESE.nii.gz
 mkdir -p fov/derivatives/T2mapping/sub-${sub}/ses-${ses}/02-Results
 phcp-t2-relaxometry \

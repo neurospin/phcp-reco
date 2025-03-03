@@ -377,6 +377,7 @@ def NiiMerger(FilesDirectory, DerivativesDirectory, modality, Subject, Session):
         )
 
     merge_volume(prefix, inputFilenames, outputFilename, isVFA)
+    # FIXME: delete non-concatenated volumes, because they are never used again
     return None
 
 
