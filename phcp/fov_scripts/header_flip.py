@@ -4,14 +4,13 @@ import pathlib
 import shutil
 import sys
 
-import nibabel as ni
-import numpy as np
-
+import nibabel
+import numpy
 
 logger = logging.getLogger(__name__)
 
 
-REORIENT_MATRIX = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+REORIENT_MATRIX = numpy.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
 
 
 def flip_headers(
@@ -55,11 +54,13 @@ def flip_headers(
                 logger.info("Skipping %s which already exists", input_volume_path.name)
             else:
                 logger.info("Processing %s...", input_volume_path.name)
-                meta = ni.load(input_volume_path)
-                ni_im = ni.Nifti1Image(
-                    meta.get_fdata(), REORIENT_MATRIX @ meta.affine, meta.header
+                input_img = nibabel.load(input_volume_path)
+                output_header = input_img.header.copy()
+                output_header.set_dim_info(None, None, None)
+                output_img = nibabel.Nifti1Image(
+                    input_img.dataobj, REORIENT_MATRIX @ input_img.affine, output_header
                 )
-                ni.save(ni_im, output_volume_path)
+                nibabel.save(output_img, output_volume_path)
                 shutil.copy(input_json_path, output_json_path)
 
 
