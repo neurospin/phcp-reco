@@ -78,11 +78,13 @@ def parse_command_line(argv):
     parser.add_argument(
         "-i",
         "--sessionDirectory",
+        required=True,
         help="input session directory, e.g. fov/rawdata/sub-${sub}/ses-${ses}",
     )
     parser.add_argument(
         "-o",
         "--outputDirectory",
+        required=True,
         help="top-level output BIDS directory, e.g. fov/headerfliprawdata",
     )
 
