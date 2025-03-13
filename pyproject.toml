@@ -22,6 +22,7 @@ phcp-brucker-preprocessing = "phcp.fov_scripts.BrukerPreprocessing:main"
 phcp-t1-relaxometry = "phcp.fov_scripts.t1_relaxometry:main"
 phcp-t2-relaxometry = "phcp.fov_scripts.t2_relaxometry:main"
 phcp-t2star-relaxometry = "phcp.fov_scripts.t2star_relaxometry:main"
+phcp-diffusion-pipeline = "phcp.fov_scripts.diffusion_pipeline:main"
 
 [tool.setuptools]
 packages = ["phcp"]

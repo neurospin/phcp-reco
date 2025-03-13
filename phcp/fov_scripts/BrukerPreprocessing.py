@@ -586,31 +586,31 @@ def parse_command_line(argv):
     parser.add_argument(
         "-s",
         "--sourcedata",
-        dest="sourcedata",
+        required=True,
         help="Sourcedata directory, e.g. fov/sourcedata",
     )
     parser.add_argument(
         "-r",
         "--rawdata",
-        dest="rawdata",
+        required=True,
         help="Rawdata directory, e.g. fov/headerfliprawdata",
     )
     parser.add_argument(
         "-d",
         "--derivatives",
-        dest="derivatives",
+        required=True,
         help="Derivatives directory, e.g. fov/derivatives",
     )
     parser.add_argument(
         "-q",
         "--subject",
-        dest="subject",
+        required=True,
         help="Subject JSON filename, e.g. derivatives/gkg-Pipeline/PreprocessingDescriptions/sub-${sub}.json",
     )
     parser.add_argument(
         "-p",
         "--descriptions",
-        dest="descriptions",
+        required=True,
         help="Descriptions directory, e.g. derivatives/gkg-Pipeline/PreprocessingDescriptions/sub-${sub}",
     )
 

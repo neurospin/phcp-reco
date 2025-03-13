@@ -6,7 +6,11 @@ import subprocess
 
 import numpy as np
 
-from phcp.config import GKG_CONTAINER_PATHS
+from phcp.config import (
+    GKG_CONTAINER_PATHS,
+    GKG_DIFFUSION_PIPELINE_PATH,
+    GKG_DIFFUSION_PIPELINE_ENTRYPOINT,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -154,6 +158,72 @@ def gkg_convert_gis_to_nifti(
         gkg_container_version="2022-12-20",
         input_dirs=[input_dir],
         output_dirs=[output_dir],
+        **kwargs,
+    )
+
+
+def gkg_convert_nifti_to_gis(
+    input_nifti: str, output_gis: str, *, verbose=False, **kwargs
+) -> subprocess.CompletedProcess:
+    command = [
+        "GkgExecuteCommand",
+        "Nifti2GisConverter",
+        "-i",
+        input_nifti,
+        "-o",
+        output_gis,
+    ]
+    if verbose:
+        command += ["-verbose"]
+
+    input_dir = os.path.dirname(input_nifti)
+    output_dir = os.path.dirname(output_gis)
+
+    return run_gkg_command(
+        command,
+        # gkg_container_version="2024-10-26",
+        gkg_container_version="2022-12-20",
+        input_dirs=[input_dir],
+        output_dirs=[output_dir],
+        **kwargs,
+    )
+
+
+def gkg_run_diffusion_pipeline(
+    subjectJsonFileName: str,
+    taskJsonFileName: str,
+    gkgpipelineJsonFilename: str,
+    outputDirectory: str,
+    *,
+    verbose=False,
+    input_dirs: list[str] = [],
+    output_dirs: list[str] = [],
+    **kwargs,
+) -> subprocess.CompletedProcess:
+    """Thin wrapper over the Gkg diffusion pipeline."""
+    command = [
+        "python",
+        os.path.join(GKG_DIFFUSION_PIPELINE_PATH, GKG_DIFFUSION_PIPELINE_ENTRYPOINT),
+        "--subjectJsonFileName",
+        subjectJsonFileName,
+        "--taskJsonFileName",
+        taskJsonFileName,
+        "--gkgpipelineJsonFilename",
+        gkgpipelineJsonFilename,
+        "--outputDirectory",
+        outputDirectory,
+    ]
+    if verbose:
+        command += ["--verbose"]
+
+    input_dirs = input_dirs + [GKG_DIFFUSION_PIPELINE_PATH]
+    output_dirs = output_dirs + [outputDirectory]
+
+    return run_gkg_command(
+        command,
+        gkg_container_version="2024-10-26",
+        input_dirs=input_dirs,
+        output_dirs=output_dirs,
         **kwargs,
     )
 

@@ -199,6 +199,7 @@ def parse_command_line(argv):
     parser.add_argument(
         "-i",
         "--input",
+        required=True,
         help="Directory with the input t2star-mge.nii.gz, "
         "typically fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/01-Materials",
     )
@@ -206,12 +207,13 @@ def parse_command_line(argv):
         "-m",
         "--mge",
         dest="MGEFilenames",
+        required=True,
         help="String for glob search of MGE volume metadata, typically fov/rawdata/sub-${sub}/ses-${ses}/anat/'*_MEGRE.json'",
     )
     parser.add_argument(
         "-o",
         "--outputDirectory",
-        dest="outputDirectory",
+        required=True,
         help="Output directory, typically fov/derivatives/T2starmapping/sub-${sub}/ses-${ses}/02-Results",
     )
     parser.add_argument(
