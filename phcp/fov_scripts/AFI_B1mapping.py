@@ -30,7 +30,6 @@ from phcp.fsl import run_fsl_command
 from phcp.gkg import run_gkg_GetMask
 from phcp.image import nibabel_orient_like
 
-
 logger = logging.getLogger(__name__)
 
 DEFAULT_TR1 = 15.0

@@ -6,8 +6,8 @@ import logging
 import os
 import sys
 
-import numpy as np
 import nibabel as ni
+import numpy as np
 
 from phcp.gkg import (
     run_gkg_command,
@@ -15,7 +15,6 @@ from phcp.gkg import (
     run_gkg_SubVolume,
 )
 from phcp.image import nibabel_orient_like
-
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,6 @@ import sys
 
 import phcp.gkg
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -30,8 +30,14 @@ packages = ["phcp"]
 
 [tool.ruff.lint]
 select = [
-    "E",
-    "F",
+    "B",    # flake8-bugbear
+    "E",    # pycodestyle a.k.a. PEP8
+    "F",    # pyflakes
+    "I",    # isort
+    "ISC",  # flake8-implicit-str-concat
+    "LOG",  # flake8-logging
+    "UP",   # pyupgrade
+    "SIM",  # flake8-simplify
 ]
 ignore = [
     "E501",  # Do not be fussy about long strings or comments, code is

@@ -7,10 +7,10 @@ import math
 import os
 import sys
 
-import numpy as np
+import ants
 import nibabel as ni
 import nibabel.processing as proc
-import ants
+import numpy as np
 from sklearn.mixture import GaussianMixture
 
 from phcp.fsl import run_fsl_command
@@ -20,7 +20,6 @@ from phcp.gkg import (
     run_gkg_SubVolume,
 )
 from phcp.image import nibabel_orient_like
-
 
 logger = logging.getLogger(__name__)
 
@@ -133,18 +132,17 @@ def createCommand_T1SingleCompartmentRelaxometryMapper(
 
 
 def write_TR_FA(fileNameFAValues, fileNameTRValues, FAFilenames, fileNameB1):
-    with open(fileNameFAValues, "w") as file:
-        with open(fileNameTRValues, "w") as file2:
-            for metadata_filename in sorted(glob.iglob(FAFilenames)):
-                with open(metadata_filename) as metadata_file:
-                    metadata = json.load(metadata_file)
-                if os.path.exists(fileNameB1):
-                    file.write(str(metadata["FlipAngle"]) + "\n")
-                else:
-                    file.write(
-                        str(math.radians(metadata["FlipAngle"])) + "\n"
-                    )  # Si pas de carte  de B1 --> convertir les angles en radians
-                file2.write(str(metadata["RepetitionTime"] * 1000) + "\n")
+    with open(fileNameFAValues, "w") as file, open(fileNameTRValues, "w") as file2:
+        for metadata_filename in sorted(glob.iglob(FAFilenames)):
+            with open(metadata_filename) as metadata_file:
+                metadata = json.load(metadata_file)
+            if os.path.exists(fileNameB1):
+                file.write(str(metadata["FlipAngle"]) + "\n")
+            else:
+                file.write(
+                    str(math.radians(metadata["FlipAngle"])) + "\n"
+                )  # Si pas de carte  de B1 --> convertir les angles en radians
+            file2.write(str(metadata["RepetitionTime"] * 1000) + "\n")
 
     return None
 
@@ -358,7 +356,7 @@ def parse_command_line(argv):
         "--input",
         required=True,
         help="Directory with the inputs t1map.nii.gz and b1.nii.gz, "
-        + "typically fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials",
+        "typically fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials",
     )
     parser.add_argument(
         "-m",

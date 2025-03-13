@@ -8,10 +8,9 @@ import numpy as np
 
 from phcp.config import (
     GKG_CONTAINER_PATHS,
-    GKG_DIFFUSION_PIPELINE_PATH,
     GKG_DIFFUSION_PIPELINE_ENTRYPOINT,
+    GKG_DIFFUSION_PIPELINE_PATH,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +73,8 @@ def run_gkg_command(
     cmd: list[str] | str,
     *,
     gkg_container_version,
-    input_dirs: list[str] = [],
-    output_dirs: list[str] = [],
+    input_dirs: list[str] = None,
+    output_dirs: list[str] = None,
     **kwargs,
 ) -> subprocess.CompletedProcess:
     """Run a command within a Gkg container, similarly to subprocess.run.
@@ -83,6 +82,10 @@ def run_gkg_command(
     Contrary to subprocess.run, the default is check=True (raise a
     CalledProcessError in case of a non-zero return code).
     """
+    if output_dirs is None:
+        output_dirs = []
+    if input_dirs is None:
+        input_dirs = []
     if "check" not in kwargs:
         kwargs["check"] = True
     if isinstance(cmd, str):
@@ -107,10 +110,14 @@ def run_gkg_command(
 def run_gkg_GetMask(
     args: list[str],
     *,
-    input_dirs: list[str] = [],
-    output_dirs: list[str] = [],
+    input_dirs: list[str] = None,
+    output_dirs: list[str] = None,
     **kwargs,
 ) -> subprocess.CompletedProcess:
+    if output_dirs is None:
+        output_dirs = []
+    if input_dirs is None:
+        input_dirs = []
     return run_gkg_command(
         ["GkgExecuteCommand", "GetMask"] + args,
         gkg_container_version="2022-12-20",
@@ -123,10 +130,14 @@ def run_gkg_GetMask(
 def run_gkg_SubVolume(
     args: list[str],
     *,
-    input_dirs: list[str] = [],
-    output_dirs: list[str] = [],
+    input_dirs: list[str] = None,
+    output_dirs: list[str] = None,
     **kwargs,
 ) -> subprocess.CompletedProcess:
+    if output_dirs is None:
+        output_dirs = []
+    if input_dirs is None:
+        input_dirs = []
     return run_gkg_command(
         ["GkgExecuteCommand", "SubVolume"] + args,
         gkg_container_version="2022-12-20",
@@ -196,11 +207,15 @@ def gkg_run_diffusion_pipeline(
     outputDirectory: str,
     *,
     verbose=False,
-    input_dirs: list[str] = [],
-    output_dirs: list[str] = [],
+    input_dirs: list[str] = None,
+    output_dirs: list[str] = None,
     **kwargs,
 ) -> subprocess.CompletedProcess:
     """Thin wrapper over the Gkg diffusion pipeline."""
+    if output_dirs is None:
+        output_dirs = []
+    if input_dirs is None:
+        input_dirs = []
     command = [
         "python",
         os.path.join(GKG_DIFFUSION_PIPELINE_PATH, GKG_DIFFUSION_PIPELINE_ENTRYPOINT),
@@ -230,7 +245,8 @@ def gkg_run_diffusion_pipeline(
 
 def load_GIS_image(GisFilename):
     DimFilename = GisFilename[:-3] + "dim"
-    TxtInDimFile = open(DimFilename, "r").read()
+    with open(DimFilename) as f:
+        TxtInDimFile = f.read()
     TxtFirstLine = TxtInDimFile.split("\n")[0]
     shape = tuple(np.int16(TxtFirstLine.split(" ")))  # [:-1]
     arr = np.fromfile(GisFilename, np.float32())

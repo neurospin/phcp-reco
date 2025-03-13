@@ -54,15 +54,14 @@ Authors :
 import glob
 import json
 import logging
-import nibabel
 import os
 import re
 import sys
 
+import nibabel
 import numpy
 
 from phcp import BrukerInformationParser
-
 
 logger = logging.getLogger(__name__)
 
@@ -78,10 +77,10 @@ def print_message(message):
 def runBvecAndBvalWriter(
     SourceDataDirectory, RawDataDirecctory, Subject, Session, DescriptionFilename
 ):
-    with open(DescriptionFilename, "r") as p:
+    with open(DescriptionFilename) as p:
         DescriptionFile = json.load(p)
 
-    for bvalue in DescriptionFile.keys():
+    for bvalue in DescriptionFile:
         for compteur in range(len(DescriptionFile[bvalue])):
             # Dicom data are stored with a BIDS-like names (sub / ses)
             DiffDirectory = os.path.join(
@@ -126,7 +125,7 @@ def runBvalMerger(DwiDirectory, Subject, Session, bvalue, OutputDirectory):
     )
     values = ""
     for bvalfile in BvalFiles:
-        with open(bvalfile, "r") as f:
+        with open(bvalfile) as f:
             values += f.readlines()[0][:-1]
 
     path = os.path.join(OutputDirectory, prefix_filename + "_dwi.bval")
@@ -145,7 +144,7 @@ def runBvecMerger(DwiDirectory, Subject, Session, bvalue, OutputDirectory):
     valuey = ""
     valuez = ""
     for bvecfile in BvecFiles:
-        with open(bvecfile, "r") as f:
+        with open(bvecfile) as f:
             value = f.readlines()
             valuex += value[0][:-1]
             valuey += value[1][:-1]
@@ -180,7 +179,7 @@ def runRGWriter(
     Session,
     SubSesKeyModalityValue_json,
 ):
-    with open(SubSesKeyModalityValue_json, "r") as p:
+    with open(SubSesKeyModalityValue_json) as p:
         SubSesKeyModalityValue_dict = json.load(p)
 
     DictionnaireRg = {}
@@ -211,7 +210,7 @@ def runRGWriter(
             )
 
         for File in glob.iglob(os.path.join(RawDataSubjectDirectory, FileName)):
-            with open(File, "r") as r:
+            with open(File) as r:
                 JsonFile = json.load(r)
 
             number = str(JsonFile["SeriesNumber"])[:-4]
@@ -328,7 +327,7 @@ def NiiMerger(FilesDirectory, DerivativesDirectory, modality, Subject, Session):
     )
 
     isVFA = False
-    if "VFA" == modality:
+    if modality == "VFA":
         print_message("VFA Merger")
         SaveVFADirectory = os.path.join(
             DerivativesDirectory, "RGCorrection", Subject, Session
@@ -341,7 +340,7 @@ def NiiMerger(FilesDirectory, DerivativesDirectory, modality, Subject, Session):
         )
         isVFA = True
 
-    elif "b8000" == modality:
+    elif modality == "b8000":
         print_message("b8000 Merger")
 
         prefix = Subject + "_" + Session + "_" + "acq-b8000_run-*" + "_dwi.nii.gz"
@@ -353,7 +352,7 @@ def NiiMerger(FilesDirectory, DerivativesDirectory, modality, Subject, Session):
             Subject + "_" + Session + "_acq-b8000_dwi.nii.gz",
         )
 
-    elif "b4500" == modality:
+    elif modality == "b4500":
         print_message("b4500 Merger")
 
         prefix = Subject + "_" + Session + "_" + "acq-b4500_run-*" + "_dwi.nii.gz"
@@ -364,7 +363,7 @@ def NiiMerger(FilesDirectory, DerivativesDirectory, modality, Subject, Session):
             "01-Materials",
             Subject + "_" + Session + "_acq-b4500_dwi.nii.gz",
         )
-    elif "b1500" == modality:
+    elif modality == "b1500":
         print_message("b1500 Merger")
 
         prefix = Subject + "_" + Session + "_" + "acq-b1500_run-*" + "_dwi.nii.gz"
@@ -390,10 +389,10 @@ def runVolumesRGCorrection(
     DerivativesDirectory,
     RGCorrectionDirectory,
 ):
-    with open(RGValuesJsonFilename, "r") as f:
+    with open(RGValuesJsonFilename) as f:
         RGDictionary = json.load(f)
 
-    with open(SubSesKeyModalityValue_json, "r") as p:
+    with open(SubSesKeyModalityValue_json) as p:
         SubSesKeyModalityValue_dict = json.load(p)
 
     Id = Subject + "_" + Session
@@ -469,13 +468,13 @@ def bruker_preprocessing(
         DescriptionsDirectory, "RG_description.json"
     )
 
-    with open(SubjectKeySessionValue_json, "r") as f:
+    with open(SubjectKeySessionValue_json) as f:
         SubjectKeySessionValue_dict = json.load(f)
 
-    with open(SubSesKeyModalityValue_json, "r") as q:
+    with open(SubSesKeyModalityValue_json) as q:
         SubSesKeyModalityValue_dict = json.load(q)
 
-    for subject in SubjectKeySessionValue_dict.keys():
+    for subject in SubjectKeySessionValue_dict:
         for session in SubjectKeySessionValue_dict[subject]:
             print_message(subject + " / " + session)
 
@@ -485,7 +484,7 @@ def bruker_preprocessing(
                     DescriptionsDirectory, subject + "_" + session + "_description.json"
                 )
 
-                with open(BvalueKeyNumberFileValue_json, "r") as p:
+                with open(BvalueKeyNumberFileValue_json) as p:
                     BvalueKeyNumberFileValue_dict = json.load(p)
 
                 print_message("Run BvecAndBvalWriter")
@@ -498,7 +497,7 @@ def bruker_preprocessing(
                     BvalueKeyNumberFileValue_json,
                 )
 
-                for bvalue in BvalueKeyNumberFileValue_dict.keys():
+                for bvalue in BvalueKeyNumberFileValue_dict:
                     SessionDirectory = os.path.join(RawdataDirectory, subject, session)
                     DwiDirectory = os.path.join(SessionDirectory, "dwi")
 

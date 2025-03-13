@@ -16,7 +16,6 @@ Authors :
 import logging
 import math
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -28,17 +27,14 @@ class BrukerInformationParser:
         visuParsFileName,
         applyVisuCoreTransformation,
     ):
-        f = open(methodFileName, "r")
-        methodLines = f.readlines()
-        f.close()
+        with open(methodFileName) as f:
+            methodLines = f.readlines()
 
-        f = open(acqpFileName, "r")
-        acqpLines = f.readlines()
-        f.close()
+        with open(acqpFileName) as f:
+            acqpLines = f.readlines()
 
-        f = open(visuParsFileName, "r")
-        visuParsLines = f.readlines()
-        f.close()
+        with open(visuParsFileName) as f:
+            visuParsLines = f.readlines()
 
         self._acqGradMatrix = self.getMatrix(acqpLines, "ACQ_grad_matrix")
         self._acqPatientPos = self.getString(acqpLines, "ACQ_patient_pos")
@@ -60,14 +56,9 @@ class BrukerInformationParser:
                 [float(1), float(0), float(0)],
             ]
 
-        elif (self._sliceOrientation == "coronal") and (self._readOrientation == "H_F"):
-            self._rotation = [
-                [float(0), float(1), float(0)],
-                [float(0), float(0), float(1)],
-                [float(1), float(0), float(0)],
-            ]
-
-        elif (self._sliceOrientation == "axial") and (self._readOrientation == "L_R"):
+        elif (
+            self._sliceOrientation == "coronal" and self._readOrientation == "H_F"
+        ) or (self._sliceOrientation == "axial" and self._readOrientation == "L_R"):
             self._rotation = [
                 [float(0), float(1), float(0)],
                 [float(0), float(0), float(1)],
@@ -122,7 +113,7 @@ class BrukerInformationParser:
 
         self._diffusionGradientOrientations = []
 
-        for b0 in range(self._b0Count):
+        for _ in range(self._b0Count):
             self._diffusionGradientOrientations.append(
                 [0.5773502691896257, 0.5773502691896257, 0.5773502691896257]
             )
@@ -163,43 +154,34 @@ class BrukerInformationParser:
         return self._receiverGain
 
     def saveBvecAndBval(self, fileNameBVec, fileNameBVal):
-        f = open(fileNameBVec, "w")
+        with open(fileNameBVec, "w") as f:
+            for o in self._diffusionGradientOrientations:
+                f.write(str(o[0]) + " ")
 
-        for o in self._diffusionGradientOrientations:
-            f.write(str(o[0]) + " ")
+            f.write("\n")
 
-        f.write("\n")
+            for o in self._diffusionGradientOrientations:
+                f.write(str(o[1]) + " ")
 
-        for o in self._diffusionGradientOrientations:
-            f.write(str(o[1]) + " ")
+            f.write("\n")
 
-        f.write("\n")
+            for o in self._diffusionGradientOrientations:
+                f.write(str(o[2]) + " ")
 
-        for o in self._diffusionGradientOrientations:
-            f.write(str(o[2]) + " ")
+            f.write("\n")
 
-        f.write("\n")
+        with open(fileNameBVal, "w") as f:
+            for b in self._dwEffBValues:
+                f.write(str(b) + " ")
 
-        f.close()
-
-        f = open(fileNameBVal, "w")
-
-        for b in self._dwEffBValues:
-            f.write(str(b) + " ")
-
-        f.write("\n")
-
-        f.close()
+            f.write("\n")
 
     def getLines(self, fileNameLines, fieldName):
         startIndex = 0
-        index = 0
-        for line in fileNameLines:
+        for index, line in enumerate(fileNameLines):
             if "##$" + fieldName + "=" in line:
                 startIndex = index
                 break
-
-            index += 1
 
         lines = []
         lines.append(fileNameLines[startIndex][len("##$" + fieldName + "=") : -1])
@@ -246,7 +228,7 @@ class BrukerInformationParser:
             index = 0
             for i in range(0, sizes[1]):
                 result.append([])
-                for j in range(0, sizes[2]):
+                for _ in range(0, sizes[2]):
                     result[i].append(values[index])
                     index += 1
 
