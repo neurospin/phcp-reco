@@ -10,6 +10,7 @@ dependencies = [
   "nibabel~=3.2",
   "scipy~=1.8",
   "antspyx~=0.4.0",
+  "SimpleITK~=2.3.1",
 ]
 requires-python = ">=3.10"
 
@@ -24,6 +25,8 @@ phcp-t1-relaxometry = "phcp.fov_scripts.t1_relaxometry:main"
 phcp-t2-relaxometry = "phcp.fov_scripts.t2_relaxometry:main"
 phcp-t2star-relaxometry = "phcp.fov_scripts.t2star_relaxometry:main"
 phcp-diffusion-pipeline = "phcp.fov_scripts.diffusion_pipeline:main"
+phcp-concat-transforms = "phcp.reco_scripts.concat_transforms:main"
+phcp-blocks-fusion = "phcp.reco_scripts.blocks_fusion:main"
 
 [tool.setuptools]
 packages = ["phcp"]

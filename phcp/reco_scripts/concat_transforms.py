@@ -1,19 +1,15 @@
-#!/usr/bin/env python3
-"""
-Created on Fri Mar 22 10:26:51 2024
-
-@author: la272118
-"""
-
 import json
-import optparse
+import logging
 import os
+import sys
 
 import ants
 import nibabel as ni
 import numpy as np
 import SimpleITK as sitk
 from scipy.ndimage import laplace
+
+logger = logging.getLogger(__name__)
 
 
 def print_message(message):
@@ -511,7 +507,7 @@ def apply_laplacian_smoothing(OutputDirectory):
 ### fin Ajout 18/11/2024.
 
 
-def RunPipeline(InputFilename, JsonFilename, OutputDirectory):
+def concat_transforms(InputFilename, JsonFilename, OutputDirectory):
     print_message("Create Reference Init Space Files")
     create_ReferenceInitSpace(InputFilename, OutputDirectory)
 
@@ -549,54 +545,40 @@ def RunPipeline(InputFilename, JsonFilename, OutputDirectory):
     return None
 
 
-parser = optparse.OptionParser()
-parser.add_option("-i", "--input", dest="InputFilename", help="input filename")
-parser.add_option(
-    "-j",
-    "--json",
-    dest="JsonFilename",
-    help="Json filename containing transformation from the init to the final space",
-)
-parser.add_option("-o", "--output", dest="OutputDirectory", help="output directory")
+def parse_command_line(argv):
+    """Parse the script's command line."""
+    import argparse
 
-(options, args) = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-i",
+        "--input",
+        required=True,
+        help="input filename",
+    )
+    parser.add_argument(
+        "-j",
+        "--json",
+        required=True,
+        help="Json filename containing transformation from the init to the final space",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        required=True,
+        help="output directory",
+    )
+
+    args = parser.parse_args()
+    return args
 
 
-################################################################################
-# 1) Value Extractor
-################################################################################
+def main(argv=sys.argv):
+    """The script's entry point."""
+    logging.basicConfig(level=logging.INFO)
+    args = parse_command_line(argv)
+    return concat_transforms(args.input, args.json, args.output) or 0
 
-RunPipeline(options.InputFilename, options.JsonFilename, options.OutputDirectory)
 
-
-# def compose_transformations2(JSON_filename, Output):
-#     Transforms = dict()
-#     with open(JSON_filename, 'r') as f:
-#         Transforms = json.load(f)
-
-#     res = np.eye(4)
-#     for trans in Transforms['TransformationFiles']:
-#         print(trans)
-#         information = sitk.ReadTransform(trans)
-
-#         if trans.split('.')[-1]=='mat':
-#             matrix = information.GetMatrix()
-#             trans = information.GetTranslation()
-#             Euler = create_matrix_matFile(matrix, trans)
-#         else :
-#             parameters = information.GetParameters()
-#             Euler = create_matrix_txtFile(parameters)
-
-#         res = res@Euler
-#     with open(Output, 'w') as f:
-#         f.write('#Insight Transform File V1.0\n')
-#         f.write('#Transform 0\n')
-#         f.write('Transform: MatrixOffsetTransformBase_double_3_3\n')
-#         f.write('Parameters: ')
-#         f.write(" ".join(map(str, np.concatenate((np.asarray(res[:3,:3]).flatten(), np.asarray(res[:3,3].reshape((3,))) ) ) ) ))
-#         f.write("\n")
-#         f.write("FixedParameters: 0 0 0")
-
-#     # data = {'AffineTransform_float_3_3': res[:3,:4].reshape((12,1)), 'fixed':np.asarray([0,0,0]).reshape((3,1))}
-#     # scipy.io.savemat(Output, data)
-#     return None
+if __name__ == "__main__":
+    sys.exit(main())

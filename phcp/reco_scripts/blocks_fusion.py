@@ -1,20 +1,18 @@
-#!/usr/bin/env python3
-"""
-Created on Wed Jan 15 15:59:26 2025
-
-@author: la272118
-"""
-
 import glob
 import json
-import optparse
+import logging
 import os
 import subprocess
+import sys
 
 import nibabel as ni
 import nibabel.processing as proc
 import numpy as np
 import scipy.ndimage as nd
+
+from phcp.gkg import gkg_convert_gis_to_nifti, run_gkg_GetMask
+
+logger = logging.getLogger(__name__)
 
 QMAP_VALUES = ["QT2", "QT2star"]
 # QMAP_VALUES = ['QT1', 'QT2', 'QT2star', 'proton-density']
@@ -29,78 +27,6 @@ def print_message(message):
     print("==================================")
     print(message)
     print("==================================")
-
-
-def ConversionGisToNifti(InputGisFilename, OutputNiftiFilename):
-    subprocess.run(
-        [
-            "singularity",
-            "exec",
-            "--bind",
-            "/neurospin:/neurospin:rw",
-            "/neurospin/phcp/code/gkg/2022-12-20_gkg/2022-12-20_gkg.sif",
-            "GkgExecuteCommand",
-            "Gis2NiftiConverter",
-            "-i",
-            InputGisFilename,
-            "-o",
-            OutputNiftiFilename,
-            "-verbose",
-        ]
-    )
-
-
-def GetMaskGkg(InputGisFilename, OutputGisFilename):
-    subprocess.run(
-        [
-            "singularity",
-            "exec",
-            "--bind",
-            "/neurospin:/neurospin:rw",
-            "/neurospin/phcp/code/gkg/2022-12-20_gkg/2022-12-20_gkg.sif",
-            "GkgExecuteCommand",
-            "GetMask",
-            "-i",
-            InputGisFilename,
-            "-o",
-            OutputGisFilename,
-            "-a",
-            "1",
-            "-format",
-            "Gis",
-            "-verbose",
-        ]
-    )
-
-
-# Utilisation de cette fonction sur GIS file geomean pour avoir un masque propre
-def create_ArrayFromGisFilename_16bit(GisFilename):
-    DimFilename = GisFilename[:-3] + "dim"
-    with open(DimFilename) as f:
-        TxtInDimFile = f.read()
-    TxtFirstLine = TxtInDimFile.split("\n")[0]
-    shape = tuple(np.int16(TxtFirstLine.split(" ")))[:-1]
-    arr = np.fromfile(GisFilename, np.float16())
-    arr = np.reshape(arr, shape, order="F")
-    return arr
-
-
-def create_ArrayFromGisFilename_32bit(GisFilename):
-    DimFilename = GisFilename[:-3] + "dim"
-    with open(DimFilename) as f:
-        TxtInDimFile = f.read()
-    TxtFirstLine = TxtInDimFile.split("\n")[0]
-    shape = tuple(np.int16(TxtFirstLine.split(" ")))[:-1]
-    arr = np.fromfile(GisFilename, np.float32())
-    arr = np.reshape(arr, shape, order="F")
-    return arr
-
-
-def arrange_ArrayToFlipHeaderFormat(arr):
-    newarr = np.swapaxes(arr, 1, 2)
-    newarr = np.flip(newarr, 1)
-    newarr = np.flip(newarr, 0)
-    return newarr
 
 
 def load_jsonfile(JsonFilename):
@@ -198,11 +124,25 @@ def create_mask_from_geomean(
     ArchitecturePath, InputGisFilename, OutputMaskGisFilename, OutputFilename
 ):
     if not (os.path.exists(OutputMaskGisFilename)):
-        GetMaskGkg(InputGisFilename, OutputMaskGisFilename)
+        run_gkg_GetMask(
+            [
+                "-i",
+                InputGisFilename,
+                "-o",
+                OutputMaskGisFilename,
+                "-a",
+                "1",
+                "-format",
+                "Gis",
+                "-verbose",
+            ],
+            input_dirs=[os.path.dirname(InputGisFilename)],
+            output_dirs=[os.path.dirname(OutputMaskGisFilename)],
+        )
     OutputMaskNiftiFilename = OutputMaskGisFilename[:-3] + "nii.gz"
 
     if not (os.path.exists(OutputMaskNiftiFilename)):
-        ConversionGisToNifti(OutputMaskGisFilename, OutputMaskNiftiFilename)
+        gkg_convert_gis_to_nifti(OutputMaskGisFilename, OutputMaskNiftiFilename)
 
     JsonFilename = os.path.join(
         ArchitecturePath,
@@ -245,36 +185,6 @@ def create_weight(CM_filename1, CM_filename2):
     CM_arr2 = proc.smooth_image(CM_2, proc.sigma2fwhm(0.2)).get_fdata()
 
     return sigmoid(np.log(CM_arr1 / CM_arr2), 4, 0)
-
-
-def create_mask_overlap_block(Mask_FilenameList):
-    overlap_mask = np.zeros(ni.load(Mask_FilenameList[0]).shape, dtype=np.int8())
-    for i in range(len(Mask_FilenameList) - 1):
-        overlap_mask |= np.int8(ni.load(Mask_FilenameList[i]).get_fdata()) & np.int8(
-            ni.load(Mask_FilenameList[i + 1]).get_fdata()
-        )
-    return overlap_mask
-
-
-def fill_Qvalues_nonOverlapping(Mask_FilenameList, Qmap_FilenameList, overlap_mask):
-    Qvalues_nonOverlapping = np.zeros(ni.load(Mask_FilenameList[0]).shape)
-    for mask, Qmap in zip(Mask_FilenameList, Qmap_FilenameList, strict=False):
-        Qvalues_nonOverlapping += (
-            ni.load(mask).get_fdata() * ni.load(Qmap).get_fdata()
-        ) * np.logical_not(overlap_mask)
-    return Qvalues_nonOverlapping
-
-
-def fill_Qvalues_Overlapping(CM_FilenameList, Qmap_FilenameList, overlap_mask):
-    Qvalues_Overlapping = np.zeros(ni.load(CM_FilenameList[0]).shape)
-    for i in range(len(CM_FilenameList) - 1):
-        weight_2 = create_weight(CM_FilenameList[i], CM_FilenameList[i + 1])
-        weight_1 = 1 - weight_2
-        Qvalues_Overlapping += (
-            weight_1 * ni.load(Qmap_FilenameList[i]).get_fdata()
-            + weight_2 * ni.load(Qmap_FilenameList[i + 1]).get_fdata()
-        ) * overlap_mask
-    return Qvalues_Overlapping
 
 
 def reconstructionv2(CM_FilenameList, Qmap_FilenameList, Mask_FilenameList):
@@ -325,34 +235,6 @@ def fill_Qvalues_Overlapping2(
         weight_1 * ni.load(Qmap_FilenameList[i]).get_fdata()
         + weight_2 * ni.load(Qmap_FilenameList[i + 1]).get_fdata()
     ) * overlap_mask
-    return Qvalues_Overlapping
-
-
-def fill_Qvalues_Overlappingv2(
-    CM_FilenameList, Qmap_FilenameList, Mask_FilenameList, overlap_mask
-):
-    Qvalues_Overlapping = np.zeros(ni.load(CM_FilenameList[0]).shape)
-    for i in range(len(CM_FilenameList) - 1):
-        mask_weight_filename = (
-            Mask_FilenameList[i + 1].split(".")[0] + "_FOV_weight.nii.gz"
-        )
-        meta_mask_weight = ni.load(mask_weight_filename)
-        arr_mask_weight = meta_mask_weight.get_fdata()
-        mask_weight_filename_i = (
-            Mask_FilenameList[i].split(".")[0] + "_FOV_weight.nii.gz"
-        )
-        meta_mask_weight_i = ni.load(mask_weight_filename_i)
-        arr_mask_weight_i = meta_mask_weight_i.get_fdata()
-
-        weight_2 = (
-            create_weight(CM_FilenameList[i], CM_FilenameList[i + 1]) * arr_mask_weight
-        )
-        weight_1 = (1 - weight_2) * arr_mask_weight_i
-        weight_2 = 1 - weight_1
-        Qvalues_Overlapping += (
-            weight_1 * ni.load(Qmap_FilenameList[i]).get_fdata()
-            + weight_2 * ni.load(Qmap_FilenameList[i + 1]).get_fdata()
-        ) * overlap_mask
     return Qvalues_Overlapping
 
 
@@ -525,7 +407,7 @@ def run_Fusion_QMRI(ArchitecturePath, nbrBlocks):
     return None
 
 
-def RunPipeline(ArchitecturePath, nbrBlocks, runMerger):
+def blocks_fusion(ArchitecturePath, nbrBlocks, runMerger):
     if not (runMerger):
         GeoMeanPath = os.path.join(ArchitecturePath, "01-GeoMean")
         InitSpacePath = os.path.join(ArchitecturePath, "02-InitSpace")
@@ -553,7 +435,9 @@ def RunPipeline(ArchitecturePath, nbrBlocks, runMerger):
         for GISFilenameInInitSpaceFolder in ImaGenerator:
             OutputNiftiFilename = GISFilenameInInitSpaceFolder[:-3] + "nii.gz"
             if not (os.path.exists(OutputNiftiFilename)):
-                ConversionGisToNifti(GISFilenameInInitSpaceFolder, OutputNiftiFilename)
+                gkg_convert_gis_to_nifti(
+                    GISFilenameInInitSpaceFolder, OutputNiftiFilename
+                )
 
         print_message("SEND NIFTI FILE IN INITSPACE TO REFSPACE")
         ImaGenerator = glob.iglob(os.path.join(InitSpacePath, "*.nii.gz"))
@@ -590,36 +474,40 @@ def RunPipeline(ArchitecturePath, nbrBlocks, runMerger):
     return None
 
 
-parser = optparse.OptionParser()
-parser.add_option(
-    "-p", "--path", dest="ArchitecturePath", help="Architectural file path"
-)
-parser.add_option("-n", "--nbrBlocks", dest="nbrBlocks", help="Number of blocks")
-parser.add_option(
-    "-r", "--run", dest="runMerger", action="store_true", help="Run Merger"
-)
+def parse_command_line(argv):
+    """Parse the script's command line."""
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-p",
+        "--path",
+        required=True,
+        help="Architectural file path",
+    )
+    parser.add_argument(
+        "-n",
+        "--nbrBlocks",
+        required=True,
+        help="Number of blocks",
+    )
+    parser.add_argument(
+        "-r",
+        "--run",
+        required=True,
+        help="Run Merger",
+    )
+
+    args = parser.parse_args()
+    return args
 
 
-(options, args) = parser.parse_args()
+def main(argv=sys.argv):
+    """The script's entry point."""
+    logging.basicConfig(level=logging.INFO)
+    args = parse_command_line(argv)
+    return blocks_fusion(args.path, args.nblocks, args.run) or 0
 
 
-################################################################################
-# 1) Value Extractor
-################################################################################
-
-RunPipeline(options.ArchitecturePath, options.nbrBlocks, options.runMerger)
-
-
-# def send_to_RefSpace(InputFilename, OutputFilename, RefSpaceFilename, Interpolator, tparams):
-#     str_command = ["antsApplyTransforms",
-#                     "-d", "3",
-#                     "-i", InputFilename,
-#                     "-r", RefSpaceFilename,
-#                     "-o", OutputFilename,
-#                     "-n", Interpolator]
-#     for i in range(len(tparams)):
-#         tparams.insert(2*i, "-t")
-#     str_command = str_command + tparams + ["-v", "1"]
-#     print(str_command)
-#     subprocess.run(str_command)
-#     return None
+if __name__ == "__main__":
+    sys.exit(main())
