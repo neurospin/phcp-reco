@@ -367,6 +367,101 @@ fov/derivatives/T1mapping
             └── T1ConfidenceMap.nii.gz
 ```
 
+### Diffusion imaging pipeline
+
+The diffusion imaging pipeline takes care of the whole chain, from the pre-processing (artefact correction) to the diffusion models (DTI, NODDI, and tractography). JSON files are used to configure which steps to run and pass parameters.
+
+#### Inputs
+
+The diffusion data itself, corrected for receiver gain, is read from this hierarchy (see `phcp-bruker-preprocessing` above):
+
+```
+fov/derivatives/gkg-Pipeline/
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        ├── b1500
+        │   └── 01-Materials
+        │       ├── sub-{subjectID}_ses-{sessionID}_acq-b1500_dwi.bval
+        │       ├── sub-{subjectID}_ses-{sessionID}_acq-b1500_dwi.bvec
+        │       └── sub-{subjectID}_ses-{sessionID}_acq-b1500_dwi.nii.gz
+        ├── b4500
+        │   └── 01-Materials
+        │       ├── sub-{subjectID}_ses-{sessionID}_acq-b4500_dwi.bval
+        │       ├── sub-{subjectID}_ses-{sessionID}_acq-b4500_dwi.bvec
+        │       └── sub-{subjectID}_ses-{sessionID}_acq-b4500_dwi.nii.gz
+        └── b8000
+            └── 01-Materials
+                ├── sub-{subjectID}_ses-{sessionID}_acq-b8000_dwi.bval
+                ├── sub-{subjectID}_ses-{sessionID}_acq-b8000_dwi.bvec
+                └── sub-{subjectID}_ses-{sessionID}_acq-b8000_dwi.nii.gz
+```
+
+The pipeline is configured using three JSON files:
+
+```
+derivatives/gkg-Pipeline/
+├── PreprocessingDescriptions
+│   └── sub-{subjectID}.json
+└── GkgPipelineDescriptions
+    ├── GkgPipeline_description_{subjectID}.json
+    └── tasks.json
+```
+
+- `sub-{subjectID}.json` is the “subject file” described above in the preprocessing section.
+
+- `GkgPipeline_description_${subjectID}.json` contains a list of sessions with the list of modalities to be processed for each:
+```json
+{
+  "sub-{subjectID}_ses-{sessionID}": [
+    "b1500",
+    "b4500",
+    "b8000"
+  ]
+}
+```
+- `tasks.json` contains the list of steps that should be run:
+
+```json
+{
+  "OrientationAndBValueFileDecoding": 1,
+  "NonLocalMeansFiltering": 1,
+  "QSpaceSamplingAddition": 1,
+  "Morphologist": 1,
+  "OutlierCorrection": 1,
+  "EddyCurrentCorrection": 1,
+  "LocalModelingDTI": 1,
+  "LocalModelingQBI": 0
+}
+```
+
+#### Usage
+
+```shell
+phcp-dffusion-pipeline \
+    --subjectJsonFileName fov/derivatives/gkg-Pipeline/PreprocessingDescriptions/sub-${sub}.json \
+    --taskJsonFileName fov/derivatives/gkg-Pipeline/GkgPipelineDescriptions/tasks.json \
+    --gkgpipelineJsonFilename fov/derivatives/GkgPipelineDescriptions/GkgPipeline_description_${sub}.json\
+    --outputDirectory fov/derivatives/gkg-Pipeline/
+```
+
+#### Outputs
+
+```
+fov/derivatives/gkg-Pipeline/
+└── sub-{subjectID}
+    └── ses-{sessionID}
+        └── b1500 / b4500 / b8000 / multishell
+            ├── 02-OrientationAndBValueFileDecoding
+            ├── 03-NonLocalMeansFiltering
+            ├── 04-QSpaceSamplingAddition
+            ├── 05-MorphologistPipeline
+            ├── 06-OutlierCorrection
+            ├── 07-EddyCurrentAndMotionCorrection
+            ├── 08-LocalModeling-DTI
+            ├── 09-LocalModeling-QBI
+            └── ...
+```
+
 ### Outputs of the field-of-view processing pipeline
 
 ```
