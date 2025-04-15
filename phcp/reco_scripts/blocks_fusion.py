@@ -494,7 +494,7 @@ def parse_command_line(argv):
     parser.add_argument(
         "-r",
         "--run",
-        required=True,
+        action="store_true",
         help="Run Merger",
     )
 
@@ -506,7 +506,7 @@ def main(argv=sys.argv):
     """The script's entry point."""
     logging.basicConfig(level=logging.INFO)
     args = parse_command_line(argv)
-    return blocks_fusion(args.path, args.nblocks, args.run) or 0
+    return blocks_fusion(args.path, args.nbrBlocks, args.run) or 0
 
 
 if __name__ == "__main__":
