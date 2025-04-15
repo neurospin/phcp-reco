@@ -54,7 +54,7 @@ def create_ReferenceInitSpace(filename, OutputDirectory):
 def Create_transformationFilesList_from_JsonFilename(JsonFilename):
     with open(JsonFilename) as f:
         res = json.load(f)
-    return res[list(res.keys())[0]]
+    return res["tparams"]
 
 
 # ADD 13/12/24
