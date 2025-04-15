@@ -377,6 +377,40 @@ fov/derivatives/fov-reconstructed
             └── sub-{subjectID}_ses-{sessionID}_TB1map.nii.gz
 ```
 
+
+## The reconstruction pipeline
+
+The reconstruction pipeline consists of:
+1. Obtaining the deformation fields that bring all fields of view into spatial correspondence. The registration strategy is described in the publications, but the details of registration can differ for different specimens. As a result, no registration scripts are distributed at the moment.
+2. Applying these deformation fields to each field of view, and merging the data into a single image.
+
+
+### Deformation fields
+
+A chain of spatial transformations, both linear and non-linear, is described in a JSON file associated to each modality for each field of view:
+
+```
+fov/derivatives/Registration
+└── sub-{subjectID}
+    └── Fusion
+        └── SendToRefSpace_{Modality}_{FoV}.json
+```
+
+The format of this JSON file is as follows:
+
+```json
+{
+    "RefSpaceFilename": ".../SpaceOfReference.nii.gz",
+    "tparams": [".../transformation1.txt", ".../transformation2.nii.gz", "..."]
+}
+```
+
+- `RefSpaceFilename` points to a Nifti file that specifies the geometry of the whole-brain space that was used for the registration process
+
+- `tparams` is a list of filenames that describe each step of the transformation chain. Each filename can point to either a linear transformation (`.txt` or `.mat` or a non-linear deformation field (`.nii.gz`).
+
+
+
 ## Contributing
 
 This repository uses [pre-commit](https://pre-commit.com/) to ensure that all committed code follows basic quality standards. Please install it and configure it to run as part of ``git commit`` by running ``pre-commit install`` in your local repository:
