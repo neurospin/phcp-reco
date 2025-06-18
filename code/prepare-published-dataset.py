@@ -128,34 +128,39 @@ def encode_image(image_dict: dict, config: dict, input_dir: os.PathLike, output_
             img.header.set_qform(affine, code='aligned')
             img.header.set_sform(affine, code='aligned')
 
-        encoded_img = convert_to_scaled_encoding(img,
-                                                 numpy.dtype(encoding_dict['dtype']),
-                                                 float(encoding_dict['slope']),
-                                                 float(encoding_dict['inter']),
-                                                 reset_scaling=encoding_dict.get('reset_scaling', False))
-        encoded_img.header.set_intent(image_dict.get('intent', 0), name=image_dict.get('intent_name', ''))
+        if 'dtype' in encoding_dict or 'slope' in encoding_dict or 'inter' in encoding_dict:
+            img = convert_to_scaled_encoding(img,
+                                             numpy.dtype(encoding_dict['dtype']),
+                                             float(encoding_dict['slope']),
+                                             float(encoding_dict['inter']),
+                                             reset_scaling=encoding_dict.get('reset_scaling', False))
+        image_dict.setdefault('intent', encoding_dict.get('intent', 0))
+        image_dict.setdefault('intent_name', encoding_dict.get('intent_name', ''))
+        img.header.set_intent(image_dict['intent'], name=image_dict['intent_name'])
         image_dict.setdefault('cal_min', encoding_dict.get('cal_min'))
         image_dict.setdefault('cal_max', encoding_dict.get('cal_max'))
         image_dict.setdefault('cal_max_quantile', encoding_dict.get('cal_max_quantile'))
-        encoded_img.header['cal_min'] = image_dict['cal_min']
-        if image_dict['cal_max'] is not None:
-            encoded_img.header['cal_max'] = image_dict['cal_max']
+        img.header['cal_min'] = image_dict['cal_min']
+        if image_dict['cal_max'] == 'max':
+            img.header['cal_max'] = img.get_fdata().max()
+        elif image_dict['cal_max'] is not None:
+            img.header['cal_max'] = image_dict['cal_max']
         elif image_dict['cal_max_quantile'] is not None:
-            encoded_img.header['cal_max'] = numpy.quantile(encoded_img.get_fdata(), image_dict['cal_max_quantile'])
+            img.header['cal_max'] = numpy.quantile(img.get_fdata(), image_dict['cal_max_quantile'])
         full_descrip = (output_basename + ' ' + config.get('descrip_post', '')).encode()
         if len(full_descrip) > 79:
             descrip_crop_len = len(full_descrip) - 79 + 3
-            encoded_img.header['descrip'] = (output_basename[:-descrip_crop_len] + '... ' + config.get('descrip_post', '')).encode()
+            img.header['descrip'] = (output_basename[:-descrip_crop_len] + '... ' + config.get('descrip_post', '')).encode()
         else:
-            encoded_img.header['descrip'] = full_descrip
-        encoded_img.header.set_xyzt_units(xyz='mm', t=None)
-        encoded_img.header.set_dim_info(None, None, None)
-        #encoded_img.header.set_slice_duration(None)
-        #encoded_img.header.set_slice_times(None)
-        encoded_img.header['toffset'] = 0.0
-        encoded_img.header['aux_file'] = b''
+            img.header['descrip'] = full_descrip
+        img.header.set_xyzt_units(xyz='mm', t=None)
+        img.header.set_dim_info(None, None, None)
+        #img.header.set_slice_duration(None)
+        #img.header.set_slice_times(None)
+        img.header['toffset'] = 0.0
+        img.header['aux_file'] = b''
 
-        nibabel.save(encoded_img, output_full_path)
+        nibabel.save(img, output_full_path)
 
 
 def prepare_published_dataset(input_dir: os.PathLike | str,
