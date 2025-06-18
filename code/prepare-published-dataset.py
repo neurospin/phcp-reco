@@ -91,18 +91,19 @@ def encode_image(image_dict: dict, config: dict, input_dir: os.PathLike, output_
         encoding_dict = config['encodings'][image_dict['encoding']]
         img = nibabel_orient_as_RAS(nibabel.load(input_full_path))
 
+        if 'expected_shape' in config:
+            expected_shape = config['expected_shape']
+            shape = img.header.get_data_shape()
+            if not numpy.array_equiv(shape, expected_shape):
+                logger.error("Skipping image with unexpected shape %s (expected %s)", shape, expected_shape)
+                return
+
         if 'affine_corr' in config:
             affine = numpy.asarray(config['affine_corr']) @ img.affine
             img = nibabel.Nifti1Image(img.dataobj, affine, img.header)
 
         if 'crop' in config:
-            shape = img.header.get_data_shape()
-            expected_shape = config['expected_shape']
-            if not numpy.array_equiv(shape, expected_shape):
-                logger.error("Skipping image with unexpected shape %s (expected %s)", shape, expected_shape)
-                return
             crop_slicing = tuple(slice(min, max, None) for min, max in config['crop'])
-
             img = img.slicer[crop_slicing]
         else:
             img = img
@@ -117,6 +118,15 @@ def encode_image(image_dict: dict, config: dict, input_dir: os.PathLike, output_
                              "because it does not match the recorded transform:\n%s",
                              img.affine)
                 return
+            voxel_size = numpy.linalg.norm(affine[:3, :3], axis=0)
+            if not numpy.allclose(voxel_size, img.header.get_zooms(), rtol=1e-4):
+                logger.error("Refusing to override the voxel size, "
+                             "because it does not match the recorded voxel size:\n%s",
+                             img.header.get_zooms())
+                return
+            img.header.set_zooms(voxel_size)
+            img.header.set_qform(affine, code='aligned')
+            img.header.set_sform(affine, code='aligned')
 
         encoded_img = convert_to_scaled_encoding(img,
                                                  numpy.dtype(encoding_dict['dtype']),
