@@ -76,7 +76,7 @@ def encode_image(image_dict: dict, config: dict, input_dir: os.PathLike, output_
     if not input_full_path.is_file():
         logger.error("%s does not exist or is not a file", input_full_path)
         return
-    if output_full_path.exists():
+    if output_full_path.exists() or output_full_path.is_symlink():
         logger.error("Target file already exists, not overwriting: %s",
                      output_full_path)
         return
