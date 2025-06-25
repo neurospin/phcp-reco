@@ -1,12 +1,10 @@
 #! /usr/bin/env python3
 
-import filecmp
 import json
 import logging
 import os
 import pathlib
-import shlex
-import shutil
+import re
 import sys
 
 import nibabel
@@ -71,19 +69,37 @@ def encode_image(image_dict: dict, config: dict, input_dir: os.PathLike, output_
     assert not input_subpath.is_absolute()
     output_datatype = image_dict['datatype']
     input_full_path = input_dir / f"sub-{source_sub}" / input_subpath
+    input_json_path = input_full_path.with_name(re.sub(r'\.nii(\.gz)?$', '.json',
+                                                       input_full_path.name))
     output_basename = f"sub-{target_sub}_{output_suffix}"
     output_full_path = output_dir / f"sub-{target_sub}" / output_datatype / (output_basename + ".nii.gz")
+    output_json_path = output_full_path.with_name(output_basename + ".json")
     if not input_full_path.is_file():
         logger.error("%s does not exist or is not a file", input_full_path)
         return
+
+    if input_json_path.exists():
+        with input_json_path.open() as f:
+            json_dict = json.load(f)
+        if output_json_path.exists() or output_json_path.is_symlink():
+            logger.error("Target file already exists, not overwriting: %s",
+                         output_json_path)
+        elif dry_run:
+            logger.info("would copy %s to %s",
+                        input_json_path, output_json_path)
+        else:
+            logger.info("copying %s to %s",
+                        input_json_path, output_json_path)
+            with output_json_path.open('w') as f:
+                json.dump(json_dict, f, indent=4)
+
     if output_full_path.exists() or output_full_path.is_symlink():
         logger.error("Target file already exists, not overwriting: %s",
                      output_full_path)
-        return
-    if dry_run:
+    elif dry_run:
         logger.info("would encode %s into %s",
                     input_full_path, output_full_path)
-    if not dry_run:
+    else:
         logger.info("encoding %s into %s",
                     input_full_path, output_full_path)
         output_full_path.parent.mkdir(parents=True, exist_ok=True)
@@ -94,7 +110,6 @@ def encode_image(image_dict: dict, config: dict, input_dir: os.PathLike, output_
             geometry_dict = {}
 
         img = nibabel_orient_as_RAS(nibabel.load(input_full_path))
-
 
         if 'expected_shape' in geometry_dict:
             expected_shape = geometry_dict['expected_shape']
