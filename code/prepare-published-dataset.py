@@ -57,6 +57,24 @@ def convert_to_scaled_encoding(img, dtype, slope, inter, reset_scaling=False):
     return new_img
 
 
+def deidentify_json(json_dict: dict):
+    # Remove unimportant or possibly identifying information
+    json_dict.pop('DeviceSerialNumber', None)
+    json_dict.pop('StationName', None)
+    json_dict.pop('ScanDate', None)
+    json_dict.pop('BidsGuess', None)
+
+    # Remove the software version of the DICOM deidentification software, which
+    # is not crucial but could leak timing information.
+    if 'DeidentificationMethod' in json_dict:
+        json_dict['DeidentificationMethod'] = [
+            ('CATI DEIDENTIFICATION - https://github.com/cati-neuroimaging/deidentification'
+             if 'CATI DEIDENTIFICATION' in row else row)
+            for row in json_dict.get('DeidentificationMethod', [])
+        ]
+    return json_dict
+
+
 def encode_image(image_dict: dict, config: dict, input_dir: os.PathLike, output_dir: os.PathLike,
                  *, dry_run=False):
     source_sub = config['source_sub']
@@ -81,6 +99,7 @@ def encode_image(image_dict: dict, config: dict, input_dir: os.PathLike, output_
     if input_json_path.exists():
         with input_json_path.open() as f:
             json_dict = json.load(f)
+        json_dict = deidentify_json(json_dict)
         if output_json_path.exists() or output_json_path.is_symlink():
             logger.error("Target file already exists, not overwriting: %s",
                          output_json_path)
