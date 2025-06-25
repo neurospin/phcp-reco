@@ -70,7 +70,7 @@ def deidentify_json(json_dict: dict):
         json_dict['DeidentificationMethod'] = [
             ('CATI DEIDENTIFICATION - https://github.com/cati-neuroimaging/deidentification'
              if 'CATI DEIDENTIFICATION' in row else row)
-            for row in json_dict.get('DeidentificationMethod', [])
+            for row in json_dict['DeidentificationMethod']
         ]
     return json_dict
 
@@ -111,6 +111,7 @@ def encode_image(image_dict: dict, config: dict, input_dir: os.PathLike, output_
                         input_json_path, output_json_path)
             with output_json_path.open('w') as f:
                 json.dump(json_dict, f, indent=4)
+                f.write('\n')
 
     if output_full_path.exists() or output_full_path.is_symlink():
         logger.error("Target file already exists, not overwriting: %s",
