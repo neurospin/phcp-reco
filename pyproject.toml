@@ -24,6 +24,7 @@ phcp-t1-relaxometry = "phcp.fov_scripts.t1_relaxometry:main"
 phcp-t2-relaxometry = "phcp.fov_scripts.t2_relaxometry:main"
 phcp-t2star-relaxometry = "phcp.fov_scripts.t2star_relaxometry:main"
 phcp-diffusion-pipeline = "phcp.fov_scripts.diffusion_pipeline:main"
+phcp-prepare-published-dataset = "phcp.scripts.prepare_published_dataset:main"
 
 [tool.setuptools]
 packages = ["phcp"]

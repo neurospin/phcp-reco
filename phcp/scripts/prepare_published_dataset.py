@@ -257,21 +257,22 @@ def prepare_published_dataset(
     for image_dict in config["images"]:
         encode_image(image_dict, config, input_dir, output_dir, dry_run=dry_run)
 
-    # Naming of the diffusion maps is based on this version of BIDS Enhancement Proposal (BEP16):
-    # https://github.com/bids-standard/bids-bep016/blob/edab0fd74b0530ffd4d35258c2e7dc3911262fce/src/derivatives/05-diffusion-derivatives.md
-
-    # with (output_dir / "dataset_description.json").open("w") as f:
-    #     json.dump({"Name": "p-HCP", "BIDSVersion": "1.10.0"}, f, indent=4)
-
 
 def parse_command_line(argv):
     """Parse the script's command line."""
     import argparse
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Prepare a dataset for publication (reidentification, "
+        "Nifti encoding, adjustment of headers)"
+    )
     parser.add_argument("input_dir", type=pathlib.Path)
-    parser.add_argument("output_dir", type=pathlib.Path)
-    parser.add_argument("config_yaml", type=pathlib.Path)
+    parser.add_argument("output_dir", type=pathlib.Path, help="output BIDS directory")
+    parser.add_argument(
+        "config_yaml",
+        type=pathlib.Path,
+        help="configuration: see examples/publication.yaml in the phcp-reco repository",
+    )
     parser.add_argument("--dry-run", action="store_true")
 
     args = parser.parse_args()
