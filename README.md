@@ -472,6 +472,22 @@ fov/derivatives/fov-reconstructed
             └── sub-{subjectID}_ses-{sessionID}_TB1map.nii.gz
 ```
 
+## Registration pipeline
+
+Complex and specimen-dependent, see the data paper.
+
+
+## Data publication
+
+Prepare the dataset for publication (reidentification, Nifti encoding, adjustment of headers):
+
+```shell
+phcp-prepare-published-dataset \
+    input_directory \
+    output_bids_directory \
+    publication.yaml
+```
+
 ## Contributing
 
 This repository uses [pre-commit](https://pre-commit.com/) to ensure that all committed code follows basic quality standards. Please install it and configure it to run as part of ``git commit`` by running ``pre-commit install`` in your local repository:
