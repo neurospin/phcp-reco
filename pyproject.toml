@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phcp-reco"
+version = "0"
+dependencies = [
+  "numpy~=1.21",
+  "nibabel~=3.2",
+  "scipy~=1.8",
+  "antspyx~=0.4.0",
+]
+requires-python = ">=3.10"
+
+[project.urls]
+Homepage = "https://github.com/neurospin/phcp-reco"
+
+[project.scripts]
+phcp-header-flip = "phcp.fov_scripts.header_flip:main"
+phcp-fov-afi-b1mapping = "phcp.fov_scripts.AFI_B1mapping:main"
+phcp-brucker-preprocessing = "phcp.fov_scripts.BrukerPreprocessing:main"
+phcp-t1-relaxometry = "phcp.fov_scripts.t1_relaxometry:main"
+phcp-t2-relaxometry = "phcp.fov_scripts.t2_relaxometry:main"
+phcp-t2star-relaxometry = "phcp.fov_scripts.t2star_relaxometry:main"
+phcp-diffusion-pipeline = "phcp.fov_scripts.diffusion_pipeline:main"
+
+[tool.setuptools]
+packages = ["phcp"]
+
+[tool.ruff.lint]
+select = [
+    "B",    # flake8-bugbear
+    "E",    # pycodestyle a.k.a. PEP8
+    "F",    # pyflakes
+    "I",    # isort
+    "ISC",  # flake8-implicit-str-concat
+    "LOG",  # flake8-logging
+    "UP",   # pyupgrade
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",  # Do not be fussy about long strings or comments, code is
+             # line-wrapped by the formatter
+    "N802",  # Gives false positives when a name contains an uppercase acronym
+]
