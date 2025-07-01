@@ -15,7 +15,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-def run_ant_apply_registration(
+def run_ants_apply_registration(
     ref_space,
     input_img,
     output_filename,
@@ -165,7 +165,7 @@ def Unwarp(
 
     OutputFilename = basename + "_rec-unwarp.nii.gz"
 
-    run_ant_apply_registration(
+    run_ants_apply_registration(
         ref_space=InputFilename,
         input_img=InputFilename,
         output_filename=OutputFilename,

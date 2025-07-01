@@ -19,7 +19,7 @@ from Unwarp import Unwarp
 logger = logging.getLogger(__name__)
 
 
-def run_ant_apply_registration(
+def run_ants_apply_registration(
     ref_space,
     input_img,
     output_filename,
@@ -262,11 +262,33 @@ def correct_header(
     ni.save(meta_warp, DeformationFieldFilename)
 
 
+def init_intermediate_space(
+    number_of_fovs: int,
+    img_ref_filename: str | os.PathLike,
+    intermediate_space_filename: str | os.PathLike,
+) -> None:
+    meta = ni.load(img_ref_filename)
+    newarr = np.ones((460, 480, number_of_fovs * 450))
+    resolution_img = meta.header["pixdim"]
+    matrix = np.asarray(
+        [
+            [resolution_img[1], 0, 0, 0],
+            [0, resolution_img[2], 0, 0],
+            [0, 0, resolution_img[3], 0],
+            [0, 0, 0, 1],
+        ]
+    )
+    ni_im = ni.Nifti1Image(newarr, matrix, meta.header)
+    ni.save(ni_im, intermediate_space_filename)
+
+
 def Preparation(File_directory, JSON_filename, verbose=0) -> None:
     verbose = bool(verbose)
     Materials_directory = os.path.join(File_directory, "01-Materials")
     Preparation_directory = os.path.join(File_directory, "02-Preparation")
     os.makedirs(Preparation_directory, exist_ok=True)
+    TransformFilesDirectory = os.path.join(File_directory, "03-TransformFiles")
+    os.makedirs(TransformFilesDirectory, exist_ok=True)
 
     with open(JSON_filename) as f:
         description = json.load(f)
@@ -289,11 +311,16 @@ def Preparation(File_directory, JSON_filename, verbose=0) -> None:
             logger.info("NLMF & N4 correction: done.")
 
         if ty != 0.0:  # ty=0 correspond to the FOV of reference (posterior part)
-            logger.info("Creating masks for overlapping zones")
-            Overlap_Mask_Extraction(
-                File_directory, refprepasuperposition, key_directory, refty, ty
+            seg_fixed_filename = os.path.join(
+                Preparation_directory,
+                refprepasuperposition.split("/")[-1].split(".")[0] + "_maskref.nii.gz",
             )
-            logger.info("Masks : done.")
+            if not (os.path.exists(seg_fixed_filename)):
+                logger.info("Creating masks for overlapping zones")
+                Overlap_Mask_Extraction(
+                    File_directory, refprepasuperposition, key_directory, refty, ty
+                )
+                logger.info("Masks : done.")
 
         Warpfilename = os.path.join(Materials_directory, "WarpHeaderFile_FWHM1.nii.gz")
         unwarpfilename = os.path.join(
@@ -313,20 +340,37 @@ def Preparation(File_directory, JSON_filename, verbose=0) -> None:
                 correct_header(WarpFile_directory, unwarpfilename, ty)
                 logger.info("Header correction: done.")
 
-        # $$$$$$$$$$$$$$$$ Application de la superposition ici $$$$$$$$$$$$$$$$$
         if ty != 0.0:
-            RASyN_overlap(
-                File_directory,
-                refsuperposition,
-                unwarpfilename,
-                maskref_filename,
-                mask_filename,
+            Prefix = os.path.join(
+                TransformFilesDirectory,
+                unwarpfilename.split("/")[-1].split("_")[1]
+                + "To"
+                + refsuperposition.split("/")[-1].split("_")[1],
             )
+            if not (os.path.exists(Prefix + "0GenericAffine.mat")):
+                RASyN_overlap(
+                    File_directory,
+                    refsuperposition,
+                    unwarpfilename,
+                    maskref_filename,
+                    mask_filename,
+                )
 
         maskref_filename = os.path.join(Preparation_directory, key + "_maskref.nii.gz")
         refprepasuperposition = key_directory
         refsuperposition = unwarpfilename
         refty = ty
+
+    intermediate_space = os.path.join(File_directory, "IntermediateSpace.nii.gz")
+    if not (os.path.exists(intermediate_space)):
+        logger.info("========= Init RefSpace =========")
+        img_ref_name = next((k for k, v in description.items() if v == ["0"]), None)
+        pos_filename = os.path.join(
+            Preparation_directory, img_ref_name + "_NLMF_N4_rec-unwarp.nii.gz"
+        )
+
+        init_intermediate_space(len(description), pos_filename, intermediate_space)
+        logger.info("Init RefSpace : done.")
 
 
 def parse_command_line(argv):
