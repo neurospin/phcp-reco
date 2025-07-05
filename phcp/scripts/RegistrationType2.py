@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!usr/bin/env python3
 """
 Created on Fri Jan  5 10:06:57 2024
 
@@ -60,15 +60,15 @@ def run_ants_apply_registration(
 
     for tfm, invert in zip(transforms, invert_flags, strict=False):
         if invert:
-            command.extend(["--trannform", f"[{tfm},1]"])
+            command.extend(["--transform", f"[{tfm},1]"])
         else:
-            command.extend(["--trannform", tfm])
+            command.extend(["--transform", tfm])
     logger.info("========= Run ANTs apply transforms =========")
 
     try:
         subprocess.run(command, check=True)
         logger.info(" ANTs apply transforms : done ")
-    except subprocess.CalledProcessEror as e:
+    except subprocess.CalledProcessError as e:
         logger.info(" ERROR : ANTs apply transforms : %s", e)
 
 
@@ -373,6 +373,98 @@ def Preparation(File_directory, JSON_filename, verbose=0) -> None:
         logger.info("Init RefSpace : done.")
 
 
+def insert_transformation_file(
+    transformationfile_directory,
+    number_iter,
+    act_session,
+    prec_session,
+    transformations_list,
+) -> None:
+    if number_iter > 0:
+        prefix = "".join([act_session, "To", prec_session])
+        warp_transformation_filename = os.path.join(
+            transformationfile_directory, "".join([prefix, "1Warp.nii.gz"])
+        )
+        mat_transformation_filename = os.path.join(
+            transformationfile_directory, "".join([prefix, "0GenericAffine.mat"])
+        )
+        if number_iter == 1:
+            transformations_list.append(warp_transformation_filename)
+            transformations_list.append(mat_transformation_filename)
+        else:
+            transformations_list.insert(
+                -2 * (number_iter - 1), warp_transformation_filename
+            )
+            transformations_list.insert(
+                -2 * (number_iter - 1), mat_transformation_filename
+            )
+
+
+def merge_FOVs(File_directory, JSON_filename) -> None:
+    preparation_directory = os.path.join(File_directory, "02-Preparation")
+    transformfile_directory = os.path.join(File_directory, "03-TransformFiles")
+    distribution_directory = os.path.join(File_directory, "04-FovsDistribution")
+
+    intermediate_space_filename = os.path.join(
+        File_directory, "IntermediateSpace.nii.gz"
+    )
+    initspace_to_refspace_transform_filename = os.path.join(
+        File_directory, "refFOV_to_intermediateSpace.txt"
+    )
+
+    with open(JSON_filename) as f:
+        description = json.load(f)
+
+    transforms_list = [initspace_to_refspace_transform_filename]
+    precedent_session = ""
+
+    for i, subject in enumerate(description):
+        filename = subject + "_NLMF_N4_rec-unwarp.nii.gz"
+        logger.info(f"========= Send {filename} to the intermediate space =========")
+        input_filename = os.path.join(preparation_directory, filename)
+        output_filename = os.path.join(
+            distribution_directory, filename.replace(".nii.gz", "_IS.nii.gz")
+        )
+        actual_session = subject.split("_")[1]
+
+        insert_transformation_file(
+            transformfile_directory,
+            i,
+            actual_session,
+            precedent_session,
+            transforms_list,
+        )
+
+        run_ants_apply_registration(
+            intermediate_space_filename,
+            input_filename,
+            output_filename,
+            transforms_list,
+        )  # Apply transforms_list first tranformation = last applied transformation
+
+        logger.info("Done")
+
+        logger.info("========= Creation of FOV mapping =========")
+        meta = ni.load(input_filename)
+        FOV_filename = input_filename.replace(".nii.gz", "_FOV.nii.gz")
+        output_FOV_filename = os.path.join(
+            distribution_directory,
+            FOV_filename.split("/")[-1].replace("nii.gz", "_IS.nii.gz"),
+        )
+        ni.save(
+            ni.Nifti1Image(np.ones(meta.shape), meta.affine, meta.header), FOV_filename
+        )
+        run_ants_apply_registration(
+            intermediate_space_filename,
+            FOV_filename,
+            output_FOV_filename,
+            transforms_list,
+            interpolation="NearestNeighbor",
+        )
+        logger.info("Done")
+        precedent_session = actual_session
+
+
 def parse_command_line(argv):
     """Parse the script's command line."""
     import argparse
@@ -393,6 +485,12 @@ def parse_command_line(argv):
         help="JSON filename typically sub-${sub}_ses-{ses} : ['float']",
     )
     parser.add_argument(
+        "-r",
+        "--runSendFOVs",
+        action="store_true",
+        help="Run the second part of the Inter-FOVs registration pipeline if this flag is present",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         required=False,
@@ -408,7 +506,10 @@ def main(argv=sys.argv):
     """The script's entry point."""
     logging.basicConfig(level=logging.INFO)
     args = parse_command_line(argv)
-    return Preparation(args.workingDirectory, args.jsonFilename, args.verbose) or 0
+    if args.runSendFOVs:
+        return merge_FOVs(args.workingDirectory, args.jsonFilename) or 0
+    else:
+        return Preparation(args.workingDirectory, args.jsonFilename, args.verbose) or 0
 
 
 if __name__ == "__main__":
