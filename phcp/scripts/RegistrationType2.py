@@ -14,6 +14,7 @@ import sys
 import ants
 import nibabel as ni
 import numpy as np
+import scipy.ndimage as nd
 from Unwarp import Unwarp
 
 logger = logging.getLogger(__name__)
@@ -442,14 +443,16 @@ def merge_FOVs(File_directory, JSON_filename) -> None:
             transforms_list,
         )  # Apply transforms_list first tranformation = last applied transformation
 
-        logger.info("Done")
+        # logger.info("Done") no need because run_ants_apply_registration already return something when ending
 
         logger.info("========= Creation of FOV mapping =========")
         meta = ni.load(input_filename)
-        FOV_filename = input_filename.replace(".nii.gz", "_FOV.nii.gz")
+        FOV_filename = input_filename.replace(
+            "_NLMF_N4_rec-unwarp.nii.gz", "_FOV.nii.gz"
+        )
         output_FOV_filename = os.path.join(
             distribution_directory,
-            FOV_filename.split("/")[-1].replace("nii.gz", "_IS.nii.gz"),
+            FOV_filename.split("/")[-1].replace(".nii.gz", "_IS.nii.gz"),
         )
         ni.save(
             ni.Nifti1Image(np.ones(meta.shape), meta.affine, meta.header), FOV_filename
@@ -461,8 +464,98 @@ def merge_FOVs(File_directory, JSON_filename) -> None:
             transforms_list,
             interpolation="NearestNeighbor",
         )
+        # logger.info("Done")
+        logger.info("========= Creation of FOV weight =========")
+        calcul_weight_FOVs(output_FOV_filename)
         logger.info("Done")
+
+        if not (i > 0):
+            reconstructed_block_nifti_im = ni.load(output_filename)
+        else:
+            logger.info("========= Concat consecutive FOVs =========")
+            reconstructed_block_nifti_im = merge_consecutive_FOVs(
+                reconstructed_block_nifti_im,
+                output_filename,
+                precedent_session,
+                sub=subject.split("_")[0],
+                dist_directory=distribution_directory,
+            )
+            logger.info("Done")
+
         precedent_session = actual_session
+    logger.info("========= Save the reconstructed block =========")
+    ni.save(
+        reconstructed_block_nifti_im,
+        os.path.join(File_directory, "Reconstructed_block.nii.gz"),
+    )
+
+
+def merge_consecutive_FOVs(
+    reconstruction_block_ni_im,
+    actual_fov_in_IS_filename,
+    prec_session,
+    sub,
+    dist_directory,
+):
+    meta_act_fov_is = ni.load(actual_fov_in_IS_filename)
+    arr_act_fov_is = meta_act_fov_is.get_fdata()
+
+    reconstructed_block_arr = reconstruction_block_ni_im.get_fdata()
+
+    # init materials
+    precedent_subject_name = "".join(
+        [os.path.join(dist_directory, sub), "_", prec_session, "_T2w"]
+    )
+    prec_fov_mask_filename = "".join([precedent_subject_name, "_FOV_IS.nii.gz"])
+    # prec_fov_weight_filename = "".join([precedent_subject_name, "_FOV_IS_weight.nii.gz"])
+
+    actual_subject_filename = os.path.join(
+        dist_directory,
+        actual_fov_in_IS_filename.split("/")[-1].replace(
+            "_NLMF_N4_rec-unwarp_IS.nii.gz", ""
+        ),
+    )
+    act_fov_mask_filename = "".join([actual_subject_filename, "_FOV_IS.nii.gz"])
+    act_fov_weight_filename = "".join(
+        [actual_subject_filename, "_FOV_IS_weight.nii.gz"]
+    )
+
+    meta_mask_prec = ni.load(prec_fov_mask_filename)
+    meta_mask_act = ni.load(act_fov_mask_filename)
+    overlap = meta_mask_prec.get_fdata() * meta_mask_act.get_fdata()
+
+    meta_act_weight = ni.load(act_fov_weight_filename)
+
+    act_weight_in_overlap = overlap * meta_act_weight.get_fdata()
+    prec_weight_in_overlap = 1 - act_weight_in_overlap
+
+    values_in_overlap = (
+        reconstructed_block_arr * prec_weight_in_overlap
+        + arr_act_fov_is * act_weight_in_overlap
+    )
+    values_act_outside_overlap = arr_act_fov_is * (meta_mask_act.get_fdata() - overlap)
+    return ni.Nifti1Image(
+        reconstructed_block_arr * np.logical_not(overlap)
+        + values_in_overlap
+        + values_act_outside_overlap,
+        reconstruction_block_ni_im.affine,
+        reconstruction_block_ni_im.header,
+    )
+
+
+def sigmoid(x, k, x0):
+    return 1 / (1 + np.exp(-k * (x - x0)))
+
+
+def calcul_weight_FOVs(fov_mapping_filename) -> None:
+    meta = ni.load(fov_mapping_filename)
+    arr = meta.get_fdata()
+    distance_mapping = nd.distance_transform_edt(arr, meta.header["pixdim"][1])
+    weight_mapping = sigmoid(distance_mapping, 1.5, 9)
+    ni.save(
+        ni.Nifti1Image(weight_mapping, meta.affine, meta.header),
+        fov_mapping_filename.replace(".nii.gz", "_weight.nii.gz"),
+    )
 
 
 def parse_command_line(argv):
