@@ -15,6 +15,7 @@ import ants
 import nibabel as ni
 import numpy as np
 import scipy.ndimage as nd
+from sklearn.mixture import GaussianMixture
 from Unwarp import Unwarp
 
 logger = logging.getLogger(__name__)
@@ -529,10 +530,16 @@ def merge_consecutive_FOVs(
     act_weight_in_overlap = overlap * meta_act_weight.get_fdata()
     prec_weight_in_overlap = 1 - act_weight_in_overlap
 
+    coefficient = find_coefficient_to_correct_intensity(
+        arr_act_fov_is, reconstructed_block_arr, overlap
+    )
+
+    arr_act_fov_is = arr_act_fov_is * coefficient
+
     values_in_overlap = (
         reconstructed_block_arr * prec_weight_in_overlap
         + arr_act_fov_is * act_weight_in_overlap
-    )
+    ) * overlap
     values_act_outside_overlap = arr_act_fov_is * (meta_mask_act.get_fdata() - overlap)
     return ni.Nifti1Image(
         reconstructed_block_arr * np.logical_not(overlap)
@@ -547,11 +554,23 @@ def sigmoid(x, k, x0):
     return 1 / (1 + np.exp(-k * (x - x0)))
 
 
+def find_coefficient_to_correct_intensity(actual_arr, precedent_arr, overlap):
+    actual_arr_filtered = actual_arr[np.bool_(overlap)]
+    precedent_arr_filtered = precedent_arr[np.bool_(overlap)]
+    actual_arr_filtered = actual_arr_filtered[actual_arr_filtered > 0]
+    precedent_arr_filtered = precedent_arr_filtered[precedent_arr_filtered > 0]
+    gmm = GaussianMixture(2)
+    gmm2 = GaussianMixture(2)
+    gmm.fit(actual_arr_filtered.reshape((-1, 1)))
+    gmm2.fit(precedent_arr_filtered.reshape((-1, 1)))
+    return gmm2.means_.flatten().max() / gmm.means_.flatten().max()
+
+
 def calcul_weight_FOVs(fov_mapping_filename) -> None:
     meta = ni.load(fov_mapping_filename)
     arr = meta.get_fdata()
     distance_mapping = nd.distance_transform_edt(arr, meta.header["pixdim"][1])
-    weight_mapping = sigmoid(distance_mapping, 1.5, 9)
+    weight_mapping = sigmoid(distance_mapping, 2, 4)
     ni.save(
         ni.Nifti1Image(weight_mapping, meta.affine, meta.header),
         fov_mapping_filename.replace(".nii.gz", "_weight.nii.gz"),
