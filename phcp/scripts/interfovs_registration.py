@@ -1,10 +1,4 @@
-#!usr/bin/env python3
-"""
-Created on Fri Jan  5 10:06:57 2024
-
-@author: la272118
-"""
-
+#!/usr/bin/env python3
 import json
 import logging
 import os
@@ -16,16 +10,15 @@ import nibabel as ni
 import numpy as np
 import scipy.ndimage as nd
 from sklearn.mixture import GaussianMixture
-from Unwarp import Unwarp
 
 logger = logging.getLogger(__name__)
 
 
 def run_ants_apply_registration(
-    ref_space,
-    input_img,
-    output_filename,
-    transforms,
+    ref_space: str,
+    input_img: str,
+    output_filename: str,
+    transforms: list[str],
     interpolation="Linear",
     dimensionality=3,
     invert_flags=None,
@@ -74,8 +67,120 @@ def run_ants_apply_registration(
         logger.info(" ERROR : ANTs apply transforms : %s", e)
 
 
+def make_header_a_deformation_field_header(arr, affine_matrix) -> ni.Nifti1Image:
+    ni_im = ni.Nifti1Image(arr, affine_matrix)
+    ni_im.header.set_intent(1007)
+    ni_im.header["regular"] = b"r"
+    ni_im.header.set_xyzt_units(2)
+    sform = ni_im.header.get_sform()
+    ni_im.header.set_qform(sform, code=1)
+    ni_im.header.set_sform(sform, code=1)
+    return ni_im
+
+
+def Unwarp(
+    InputFilename: str | os.PathLike, Warpfilename, headerFlip=True, verbose=True
+) -> None:
+    logger.info("========= Loading GNLC data =========")
+    meta_warp = ni.load(Warpfilename)
+    arr_warp = meta_warp.get_fdata()
+
+    basename = InputFilename.split(".")[0]
+    meta_input = ni.load(InputFilename)
+
+    logger.info("========= Adjust GNLC Deformation Field Header =========")
+    size_input = meta_input.header["dim"][1:4]
+    size_warp = np.asarray(arr_warp.shape)[0:3]
+    resolution_input = np.abs(meta_input.header["pixdim"][1:4])  # [x,y,z]
+    resolution_warp = np.abs(meta_warp.header["pixdim"][1:4])  # [x,y,z]
+
+    if headerFlip:
+        translation_input = -np.abs(
+            np.asarray(
+                [
+                    float(meta_input.header["qoffset_x"]),
+                    float(meta_input.header["qoffset_z"]),
+                    float(meta_input.header["qoffset_y"]),
+                ]
+            )
+        )  # HeaderFlip swaps z and y axes
+        Input_affine = meta_input.affine
+        with np.errstate(divide="ignore", invalid="ignore"):
+            Input_affine[0][0:3] = (
+                Input_affine[0][0:3] / Input_affine[0][0:3] * resolution_warp[0]
+            )
+            Input_affine[1][0:3] = (
+                -Input_affine[1][0:3] / Input_affine[1][0:3] * resolution_warp[2]
+            )
+            Input_affine[2][0:3] = (
+                Input_affine[2][0:3] / Input_affine[2][0:3] * resolution_warp[1]
+            )
+            Input_affine[np.isnan(Input_affine)] = 0
+
+    else:
+        translation_input = -np.abs(
+            np.asarray(
+                [
+                    float(meta_input.header["qoffset_x"]),
+                    float(meta_input.header["qoffset_y"]),
+                    float(meta_input.header["qoffset_z"]),
+                ]
+            )
+        )
+        Input_affine = meta_input.affine
+        with np.errstate(divide="ignore", invalid="ignore"):
+            Input_affine[0][0:3] = (
+                Input_affine[0][0:3] / Input_affine[0][0:3] * resolution_warp[0]
+            )
+            Input_affine[1][0:3] = (
+                Input_affine[1][0:3] / Input_affine[1][0:3] * resolution_warp[1]
+            )
+            Input_affine[2][0:3] = (
+                Input_affine[2][0:3] / Input_affine[2][0:3] * resolution_warp[2]
+            )
+            Input_affine[np.isnan(Input_affine)] = 0
+
+    ecart_input = np.int16(-size_input * resolution_input / 2 - translation_input)
+    vx_of_interest = np.int16(resolution_input * size_input / resolution_warp)
+    lower_bundaries = np.int16(
+        (size_warp - vx_of_interest) / 2 - ecart_input / resolution_warp
+    )
+    higher_bundaries = lower_bundaries + vx_of_interest
+    newarr = arr_warp[
+        lower_bundaries[0] : higher_bundaries[0],
+        lower_bundaries[1] : higher_bundaries[1],
+        lower_bundaries[2] : higher_bundaries[2],
+        :,
+        :,
+    ]
+
+    ni_im = make_header_a_deformation_field_header(newarr, Input_affine)
+
+    WarpInputSpaceFilename = basename + "_Warp.nii.gz"
+
+    ni.save(ni_im, WarpInputSpaceFilename)
+
+    logger.info("========= Unwarp Input File =========")
+
+    OutputFilename = basename + "_rec-unwarp.nii.gz"
+
+    run_ants_apply_registration(
+        ref_space=InputFilename,
+        input_img=InputFilename,
+        output_filename=OutputFilename,
+        transforms=[WarpInputSpaceFilename],
+        interpolation="Linear",
+        dimensionality=3,
+        invert_flags=None,
+    )
+
+
 def Overlap_Mask_Extraction(
-    File_directory, fixedfilename, movingfilename, ty1, ty2
+    File_directory: str | os.PathLike,
+    fixedfilename: str,
+    movingfilename: str,
+    ty1: float,
+    ty2: float,
 ) -> None:
     Preparation_directory = os.path.join(File_directory, "02-Preparation")
 
@@ -84,16 +189,14 @@ def Overlap_Mask_Extraction(
 
     ty = ty2 - ty1
 
-    # arr_fixed = meta_fixed.get_fdata()
     size_fixed = tuple(meta_fixed.header["dim"][1:4])  # arr_fixed.shape
 
-    # arr_moving = meta_moving.get_fdata()
     size_moving = tuple(meta_moving.header["dim"][1:4])  # arr_moving.shape
 
     resolution_fixed = np.abs(meta_fixed.header["pixdim"][1:4])  # [x,y,z]
     resolution_moving = np.abs(meta_moving.header["pixdim"][1:4])  # [x,y,z]
 
-    # Bande de sécurité de 4 mm
+    # Safety band of 4 mm
     largeur = 4
     # number of slice in the fixed img
     bd_security_fixed = np.int16(largeur / resolution_fixed[2])
@@ -131,10 +234,6 @@ def Overlap_Mask_Extraction(
     with open(json_filename, "w") as fp:
         json.dump(json_file, fp)
 
-    # seg_fixed[:,:,bd_security_fixed:nbrslice_overlap_fixed-bd_security_fixed] = \
-    #     np.ones((size_fixed[:2]+(nbrslice_overlap_fixed-2*bd_security_fixed,)))
-    # seg_moving[:,:,size_moving[2]+bd_security_moving-nbrslice_overlap_moving:-bd_security_moving] = \
-    #     np.ones((size_fixed[:2]+(nbrslice_overlap_moving-2*bd_security_moving,)))
     seg_fixed[:, :, bd_security_fixed:nbrslice_overlap_fixed] = np.ones(
         size_fixed[:2] + (nbrslice_overlap_fixed - bd_security_fixed,)
     )
@@ -237,7 +336,9 @@ def RASyN_overlap(
         logger.info(" ERROR : ANTs Registration : %s", e)
 
 
-def apply_NLMF_and_n4(img_filename, output_filename, verbose) -> None:
+def apply_NLMF_and_n4(
+    img_filename: str, output_filename: str, verbose: int | bool
+) -> None:
     ANTSimage = ants.image_read(img_filename)
     n4_antsimg = ants.n4_bias_field_correction(
         ANTSimage, spline_param=20, return_bias_field=True
@@ -284,7 +385,9 @@ def init_intermediate_space(
     ni.save(ni_im, intermediate_space_filename)
 
 
-def Preparation(File_directory, JSON_filename, verbose=0) -> None:
+def Preparation(
+    File_directory: str | os.PathLike, JSON_filename: str, verbose=0
+) -> None:
     verbose = bool(verbose)
     Materials_directory = os.path.join(File_directory, "01-Materials")
     Preparation_directory = os.path.join(File_directory, "02-Preparation")
@@ -373,14 +476,19 @@ def Preparation(File_directory, JSON_filename, verbose=0) -> None:
 
         init_intermediate_space(len(description), pos_filename, intermediate_space)
         logger.info("Init RefSpace : done.")
+    logger.info(
+        "Preparation step : done. WARNING : Before selecting the Fusion step, "
+        " be sure to create the transformation matrix (.txt or .mat) "
+        " so that the reference FOV is correctly positioned in the intermediate space"
+    )
 
 
 def insert_transformation_file(
-    transformationfile_directory,
-    number_iter,
-    act_session,
-    prec_session,
-    transformations_list,
+    transformationfile_directory: str | os.PathLike,
+    number_iter: int,
+    act_session: str,
+    prec_session: str,
+    transformations_list: list[str],
 ) -> None:
     if number_iter > 0:
         prefix = "".join([act_session, "To", prec_session])
@@ -402,11 +510,11 @@ def insert_transformation_file(
             )
 
 
-def merge_FOVs(File_directory, JSON_filename) -> None:
+def merge_FOVs(File_directory: str | os.PathLike, JSON_filename: str) -> None:
     preparation_directory = os.path.join(File_directory, "02-Preparation")
     transformfile_directory = os.path.join(File_directory, "03-TransformFiles")
     distribution_directory = os.path.join(File_directory, "04-FovsDistribution")
-
+    os.makedirs(distribution_directory, exist_ok=True)
     intermediate_space_filename = os.path.join(
         File_directory, "IntermediateSpace.nii.gz"
     )
@@ -444,7 +552,7 @@ def merge_FOVs(File_directory, JSON_filename) -> None:
             transforms_list,
         )  # Apply transforms_list first tranformation = last applied transformation
 
-        # logger.info("Done") no need because run_ants_apply_registration already return something when ending
+        logger.info(f"Send {filename} to the intermediate space : Done")
 
         logger.info("========= Creation of FOV mapping =========")
         meta = ni.load(input_filename)
@@ -465,10 +573,10 @@ def merge_FOVs(File_directory, JSON_filename) -> None:
             transforms_list,
             interpolation="NearestNeighbor",
         )
-        # logger.info("Done")
+        logger.info("Creation of FOV mapping : Done")
         logger.info("========= Creation of FOV weight =========")
         calcul_weight_FOVs(output_FOV_filename)
-        logger.info("Done")
+        logger.info("Creation of FOV weight : Done")
 
         if not (i > 0):
             reconstructed_block_nifti_im = ni.load(output_filename)
@@ -481,7 +589,7 @@ def merge_FOVs(File_directory, JSON_filename) -> None:
                 sub=subject.split("_")[0],
                 dist_directory=distribution_directory,
             )
-            logger.info("Done")
+            logger.info("Concat consecutive FOVs : Done")
 
         precedent_session = actual_session
     logger.info("========= Save the reconstructed block =========")
@@ -492,12 +600,12 @@ def merge_FOVs(File_directory, JSON_filename) -> None:
 
 
 def merge_consecutive_FOVs(
-    reconstruction_block_ni_im,
-    actual_fov_in_IS_filename,
-    prec_session,
-    sub,
-    dist_directory,
-):
+    reconstruction_block_ni_im: ni.Nifti1Image,
+    actual_fov_in_IS_filename: str | os.PathLike,
+    prec_session: str,
+    sub: str,
+    dist_directory: str | os.PathLike,
+) -> ni.Nifti1Image:
     meta_act_fov_is = ni.load(actual_fov_in_IS_filename)
     arr_act_fov_is = meta_act_fov_is.get_fdata()
 
@@ -508,7 +616,6 @@ def merge_consecutive_FOVs(
         [os.path.join(dist_directory, sub), "_", prec_session, "_T2w"]
     )
     prec_fov_mask_filename = "".join([precedent_subject_name, "_FOV_IS.nii.gz"])
-    # prec_fov_weight_filename = "".join([precedent_subject_name, "_FOV_IS_weight.nii.gz"])
 
     actual_subject_filename = os.path.join(
         dist_directory,
@@ -550,11 +657,13 @@ def merge_consecutive_FOVs(
     )
 
 
-def sigmoid(x, k, x0):
+def sigmoid(x: np.ndarray, k: float, x0: float) -> np.ndarray:
     return 1 / (1 + np.exp(-k * (x - x0)))
 
 
-def find_coefficient_to_correct_intensity(actual_arr, precedent_arr, overlap):
+def find_coefficient_to_correct_intensity(
+    actual_arr: np.ndarray, precedent_arr: np.ndarray, overlap: np.ndarray
+) -> float:
     actual_arr_filtered = actual_arr[np.bool_(overlap)]
     precedent_arr_filtered = precedent_arr[np.bool_(overlap)]
     actual_arr_filtered = actual_arr_filtered[actual_arr_filtered > 0]
@@ -566,7 +675,7 @@ def find_coefficient_to_correct_intensity(actual_arr, precedent_arr, overlap):
     return gmm2.means_.flatten().max() / gmm.means_.flatten().max()
 
 
-def calcul_weight_FOVs(fov_mapping_filename) -> None:
+def calcul_weight_FOVs(fov_mapping_filename: str | os.PathLike) -> None:
     meta = ni.load(fov_mapping_filename)
     arr = meta.get_fdata()
     distance_mapping = nd.distance_transform_edt(arr, meta.header["pixdim"][1])
@@ -582,7 +691,12 @@ def parse_command_line(argv):
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Algorithms for inter-FOVs registration. ",
+        description="Algorithms for inter-FOVs registration."
+        " Is split into two section : Preparation & Fusion. "
+        "Without the --runMergeFOVs flag, only the Preparation section is selected."
+        "With the --runMergeFOVs flag, only the Fusion section is selected. "
+        "Be sure to create the transformation matrix after the preparation section and "
+        "before the Fusion section so that the reference FOV is correctly positioned in the intermediate space",
     )
     parser.add_argument(
         "-i",
@@ -598,7 +712,7 @@ def parse_command_line(argv):
     )
     parser.add_argument(
         "-r",
-        "--runSendFOVs",
+        "--runMergeFOVs",
         action="store_true",
         help="Run the second part of the Inter-FOVs registration pipeline if this flag is present",
     )
@@ -618,7 +732,7 @@ def main(argv=sys.argv):
     """The script's entry point."""
     logging.basicConfig(level=logging.INFO)
     args = parse_command_line(argv)
-    if args.runSendFOVs:
+    if args.runMergeFOVs:
         return merge_FOVs(args.workingDirectory, args.jsonFilename) or 0
     else:
         return Preparation(args.workingDirectory, args.jsonFilename, args.verbose) or 0
