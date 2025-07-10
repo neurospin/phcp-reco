@@ -18,8 +18,8 @@ def parse_command_line(argv):
         "-s",
         "--subjectJsonFileName",
         required=True,
-        help="Subject json dictionary filename, e.g. "
-        "derivatives/gkg-Pipeline/GkgPipelineDescriptions/sub-${sub}.json",
+        help="Subject json dictionary filename containing a list of subjects and their "
+        "sessions, e.g. fov/derivatives/gkg-Pipeline/PreprocessingDescriptions/sub-${sub}.json",
     )
     parser.add_argument(
         "-t",
@@ -31,7 +31,9 @@ def parse_command_line(argv):
         "-g",
         "--gkgpipelineJsonFilename",
         required=True,
-        help="GkgPipelineDescription json dictionary filename",
+        help="GkgPipelineDescription json dictionary filename (list of sessions with the "
+        "list of modalities, i.e. b-values, to be processed for each), e.g."
+        "fov/derivatives/GkgPipelineDescriptions/GkgPipeline_description_${sub}.json",
     )
     parser.add_argument(
         "-o",

@@ -1,0 +1,225 @@
+source_sub: identifier
+target_sub: t20z
+
+descrip_post: "p-HCP, 2025, CC-BY-SA 4.0"
+
+geometries:
+  affine_corr: [
+    [1, 0, 0, -0.3],
+    [0, 1, 0, -2.6],
+    [0, 0, 1, -5.8],
+    [0, 0, 0, 1]
+  ]
+
+  # Crop obtained with this code:
+  # def _bounding_box_gen(arr, margin_vox=10):
+  #    print(arr.shape)
+  #    for i in range(3):
+  #        nz = numpy.count_nonzero(arr, axis=tuple({0, 1, 2} - {i}))
+  #        nz_ind = numpy.nonzero(nz)[0]
+  #        yield [int(max(nz_ind.min() - margin_vox, 0)), int(min(nz_ind.max() + margin_vox + 1, arr.shape[i]))]
+  # def bounding_box_crop(img, margin_vox=10):
+  #     return list(_bounding_box_gen(img.get_fdata(),
+  #                  margin_vox=margin_vox))
+  expected_shape: [462, 540, 402]
+  crop: [[54, 417], [27, 504], [35, 377]]
+
+  affine_precision_override: [
+    [0.1, 0, 0, -17.9],
+    [0, 0.1, 0, -29.9],
+    [0, 0, 0.1, -17.3],
+    [0, 0, 0, 1]
+  ]
+  insitu:
+    # do not check or adjust the geometry of the in-situ scan
+
+
+encodings:
+  weighted:
+    dtype: uint16
+    slope: 1e-5
+    inter: 0.0
+    reset_scaling: True
+    cal_min: 0.0
+    cal_max_quantile: 0.999
+  insitu:
+    dtype: int16
+    slope: 4.6317458152771  # from the initial file converted by dcm2niix
+    inter: 0.0
+    reset_scaling: True
+    cal_min: 0.0
+    cal_max_quantile: 0.999
+  relaxo:
+    dtype: uint16
+    slope: 0.01
+    inter: 0.0
+    cal_min: 0.0
+  log_jacobian_det:
+    dtype: uint16
+    slope: 0.001
+    inter: -32.768
+    cal_min: -1.5
+    cal_max: 1.5
+  diffusivity:
+    dtype: uint16
+    slope: 1e-13
+    inter: 0.0
+    cal_min: 0.0
+    cal_max: 1.2e-9
+  fa:
+    dtype: uint16
+    slope: 1e-4
+    inter: 0.0
+    cal_min: 0.0
+    cal_max: 0.5
+  gfa:
+    dtype: uint16
+    slope: 1e-4
+    inter: 0.0
+    cal_min: 0.0
+    cal_max: 0.3
+
+images:
+  - suffix: T2w
+    datatype: anat
+    source: T2w.nii.gz
+    encoding: weighted
+  - suffix: acq-insitudrive_T2w
+    datatype: anat
+    source: acq-insitudrive_T2w.nii.gz
+    encoding: insitu
+    geometry: insitu
+  - suffix: T1map
+    datatype: anat
+    source: T1map.nii.gz
+    encoding: relaxo
+    intent: estimate
+    intent_name: T1
+    cal_min: 0.0
+    cal_max: 120.0
+  - suffix: rec-uncorr_T1map
+    datatype: anat
+    source: rec-uncorr_T1map.nii.gz
+    encoding: relaxo
+    intent: estimate
+    intent_name: T1
+    cal_min: 0.0
+    cal_max: 120.0
+  - suffix: T2map
+    datatype: anat
+    source: T2map.nii.gz
+    encoding: relaxo
+    intent: estimate
+    intent_name: T2
+    cal_min: 0.0
+    cal_max: 50.0
+  - suffix: T2starmap
+    datatype: anat
+    source: T2starmap.nii.gz
+    encoding: relaxo
+    intent: estimate
+    intent_name: T2*
+    cal_min: 0.0
+    cal_max: 40.0
+
+  - suffix: LogJacobianDet
+    datatype: anat
+    source: Jacobian_det.nii.gz
+    encoding: log_jacobian_det
+    intent: estimate
+    intent_name: Log Jac. det.
+
+  # Naming of the diffusion maps is based on this version of BIDS Enhancement Proposal (BEP16):
+  # https://github.com/bids-standard/bids-bep016/blob/edab0fd74b0530ffd4d35258c2e7dc3911262fce/src/derivatives/05-diffusion-derivatives.md
+  - suffix: acq-b1500_model-tensor_desc-mean_param-diffusivity_dwimap
+    datatype: dwi
+    encoding: diffusivity
+    source: acq-b1500_rec-DTIadc.nii.gz
+    intent: estimate
+    intent_name: mean diff
+  - suffix: acq-b1500_model-tensor_desc-parallel_param-diffusivity_dwimap
+    datatype: dwi
+    encoding: diffusivity
+    source: acq-b1500_rec-DTIparaDiff.nii.gz
+    intent: estimate
+    intent_name: parallel diff.
+  - suffix: acq-b1500_model-tensor_desc-transverse_param-diffusivity_dwimap
+    datatype: dwi
+    encoding: diffusivity
+    source: acq-b1500_rec-DTItransDiff.nii.gz
+    intent: estimate
+    intent_name: transverse diff
+  - suffix: acq-b1500_model-tensor_param-fa_dwimap
+    datatype: dwi
+    encoding: fa
+    source: acq-b1500_rec-DTIfa.nii.gz
+    intent: estimate
+    intent_name: FA
+  - suffix: acq-b1500_model-aqbi_param-gfa_dwimap
+    datatype: dwi
+    encoding: gfa
+    source: acq-b1500_rec-AQBIgfa.nii.gz
+    intent: estimate
+    intent_name: generalized FA
+
+  - suffix: acq-b4500_model-tensor_desc-mean_param-diffusivity_dwimap
+    datatype: dwi
+    encoding: diffusivity
+    source: acq-b4500_rec-DTIadc.nii.gz
+    intent: estimate
+    intent_name: mean diff
+  - suffix: acq-b4500_model-tensor_desc-parallel_param-diffusivity_dwimap
+    datatype: dwi
+    encoding: diffusivity
+    source: acq-b4500_rec-DTIparaDiff.nii.gz
+    intent: estimate
+    intent_name: parallel diff.
+  - suffix: acq-b4500_model-tensor_desc-transverse_param-diffusivity_dwimap
+    datatype: dwi
+    encoding: diffusivity
+    source: acq-b4500_rec-DTItransDiff.nii.gz
+    intent: estimate
+    intent_name: transverse diff
+  - suffix: acq-b4500_model-tensor_param-fa_dwimap
+    datatype: dwi
+    encoding: fa
+    source: acq-b4500_rec-DTIfa.nii.gz
+    intent: estimate
+    intent_name: FA
+  - suffix: acq-b4500_model-aqbi_param-gfa_dwimap
+    datatype: dwi
+    encoding: gfa
+    source: acq-b4500_rec-AQBIgfa.nii.gz
+    intent: estimate
+    intent_name: generalized FA
+
+  - suffix: acq-b8000_model-tensor_desc-mean_param-diffusivity_dwimap
+    datatype: dwi
+    encoding: diffusivity
+    source: acq-b8000_rec-DTIadc.nii.gz
+    intent: estimate
+    intent_name: mean diff
+  - suffix: acq-b8000_model-tensor_desc-parallel_param-diffusivity_dwimap
+    datatype: dwi
+    encoding: diffusivity
+    source: acq-b8000_rec-DTIparaDiff.nii.gz
+    intent: estimate
+    intent_name: parallel diff.
+  - suffix: acq-b8000_model-tensor_desc-transverse_param-diffusivity_dwimap
+    datatype: dwi
+    encoding: diffusivity
+    source: acq-b8000_rec-DTItransDiff.nii.gz
+    intent: estimate
+    intent_name: transverse diff
+  - suffix: acq-b8000_model-tensor_param-fa_dwimap
+    datatype: dwi
+    encoding: fa
+    source: acq-b8000_rec-DTIfa.nii.gz
+    intent: estimate
+    intent_name: FA
+  - suffix: acq-b8000_model-aqbi_param-gfa_dwimap
+    datatype: dwi
+    encoding: gfa
+    source: acq-b8000_rec-AQBIgfa.nii.gz
+    intent: estimate
+    intent_name: generalized FA
