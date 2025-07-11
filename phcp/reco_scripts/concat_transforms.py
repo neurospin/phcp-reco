@@ -549,18 +549,35 @@ def parse_command_line(argv):
     """Parse the script's command line."""
     import argparse
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Concatenates linear and non-linear transformations in ANTS format. \n"
+        "This script creates the following main files in the output directory :\n"
+        "    + Deformation_field_SyN.nii.gz, Concatenated raw non-linear transformations ;\n"
+        "    + Deformation_field_SyN_Smoothed.nii.gz, SyN_deformation_field smoothed with Laplacian model (can be used in future scripts) ;\n"
+        "    + Jacobian_Deformation_field_SyN.nii.gz, Jacobian determinant of Deformation_field_SyN.nii.gz ;\n"
+        "    + JacobianLog_Deformation_field_SyN.nii.gz, log of Jacobian_Deformation_field_SyN.nii.gz;\n"
+        "    + TotalAffineTransform.txt, Concatenated linear transformations.\n \n"
+        "USAGE : \n    Transformation files should be applied in the following order : \n"
+        "        1. Deformation_field_SyN.nii.gz or Deformation_field_SyN_Smoothed.nii.gz \n"
+        "        2. TotalAffineTransform.txt.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument(
         "-i",
         "--input",
         required=True,
-        help="input filename",
+        help="Filename of the FOV in the initial space (ex: sub-{sub}_"
+        "ses-_{ses}_T2w.nii.gz)",
     )
     parser.add_argument(
         "-j",
         "--json",
         required=True,
-        help="Json filename containing transformation from the init to the final space",
+        help="Json filename containing path of transformation files from "
+        "initial space to the final space. The json filename should followed "
+        "the following architecture {  'tparams':  ["
+        "transform_file_1_path, transform_file_2_path, ...,"
+        " transform_file_n_path]   }",
     )
     parser.add_argument(
         "-o",
