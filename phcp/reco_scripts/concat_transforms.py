@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -55,199 +56,178 @@ def is_mat_file(path: str | Path) -> bool:
     return Path(path).suffix == ".mat"
 
 
-def compose_linear_transformations(
-    MatrixTransformsFilenameList: list[str], nbr_trf: int, OutputDirectory: str | Path
-) -> str:
-    res = np.eye(4)
-    restrictedList = MatrixTransformsFilenameList[:nbr_trf]
-    # restrictedList.reverse()
-    # print(type(restrictedList))
-    center = np.asarray((0, 0, 0))
-    for trans in restrictedList:
-        information = sitk.ReadTransform(trans)
-
-        if is_mat_file(trans):
-            matrix = information.GetMatrix()
-            trans = information.GetTranslation()
-            if information.GetCenter() != list((0, 0, 0)):
-                center = np.asarray(information.GetCenter())
-            Euler = create_matrix_matFile(matrix, trans)
-        else:
-            parameters = information.GetParameters()
-            Euler = create_matrix_txtFile(parameters)
-        res = res @ Euler
-    OuputFilename = Path(OutputDirectory) / f"AffineTransform_nbr{nbr_trf}.txt"
-    with open(OuputFilename, "w") as f:
-        f.write("#Insight Transform File V1.0\n")
-        f.write("#Transform 0\n")
-        f.write("Transform: MatrixOffsetTransformBase_double_3_3\n")
-        f.write("Parameters: ")
-        f.write(
-            " ".join(
-                map(
-                    str,
-                    np.concatenate(
-                        (
-                            np.asarray(res[:3, :3]).flatten(),
-                            np.asarray(res[:3, 3].reshape((3,))),
-                        )
-                    ),
-                )
-            )
-        )
-        f.write("\n")
-        f.write("FixedParameters: " + " ".join(map(str, center)))
-    return OuputFilename
-
-
 def is_warp_file(path: str | Path) -> bool:
     return Path(path).stem.lower().endswith("warp")
 
 
-def identify_warpFiles(TransformationFilesList: list[str]) -> list[int]:
-    warpfiles_indices = []
-    for indice in range(len(TransformationFilesList)):
-        if is_warp_file(TransformationFilesList[indice]):
-            warpfiles_indices.append(indice)
-    return warpfiles_indices
-
-
-def identify_NbrOfTransformations(warpfiles_indices: list[int]) -> list[int]:
-    list_linear_transforms_to_warp_counts = []  # list containing in indice 0, the number of linear transforms between the first transform
-    # file and the first warp file. In indice 1, the number of linear transform between the first transform file and
-    # the second warp file...
-    for el in warpfiles_indices:
-        list_linear_transforms_to_warp_counts.append(el - warpfiles_indices.index(el))
-    return list_linear_transforms_to_warp_counts
-
-
-def run_linear_transform_composer(
+def make_complete_transformationlist_with_invertflags(
     TransformationFilesList: list[str],
-    MatrixTransformsFilenameList: list[str],
-    OutputDirectory: str | os.PathLike,
-) -> list[str]:
-    warpfiles_indices = identify_warpFiles(TransformationFilesList)
-    nbrOfLinearTransform = identify_NbrOfTransformations(warpfiles_indices)
-    ListLinearTrfComposed = []
-    for nbr_trf in nbrOfLinearTransform:
-        LinearTrfComposed = compose_linear_transformations(
-            MatrixTransformsFilenameList, nbr_trf, OutputDirectory
-        )
-        ListLinearTrfComposed.append(LinearTrfComposed)
-    return ListLinearTrfComposed
+) -> (list[str], list[bool]):
+    """
+    Constructs a complete list of transformation filenames and corresponding inversion flags,
+    ordered to allow composition of all transformations into the initial reference space.
 
+    The strategy applied follows this sequence:
 
-# def make_complete_transformationlist(
-#     ListLinearTrfComposed : list[str], TransformationFilesList : list[str], warpfiles_indices : list[int]
-# ):
-#     res = []
-#     for i in range(len(ListLinearTrfComposed)):
-#         res.append(ListLinearTrfComposed[i])
-#         res.append(TransformationFilesList[warpfiles_indices[i]])
-#         res.append(f"[{ListLinearTrfComposed[i]}, 1]")
-#     res.reverse()
-#     return res
+        Initial space
+             |
+        Linear_1
+             |
+        non_linear_1
+             |
+        Linear_2
+             |
+        non_linear_2
+             |
+            ...
+             |
+        Last_transform
 
+    To bring everything back to the initial space, we apply the **inverse** of each linear transform in reverse order.
 
-# END ADD 13/12/24
+    This results in the following application order:
 
+        Inverse Linear_1
+               |
+        Inverse Linear_2
+               |
+            ...
+               |
+        Last_transform (if linear, then inverted, otherwise not added in this part)
 
-def make_complete_transformationlist(TransformationFilesList):
-    res = []
+    Returns:
+        complete_transformationlist (list[str]): Ordered list of transformation file paths.
+        invert_flagslist (list[bool]): Boolean flags indicating whether each corresponding transformation should be inverted.
+    """
+    complete_transformationlist = []
+    invert_flagslist = []
     for el in TransformationFilesList:
-        # print(el)
-        if el.split(".")[1] != "nii":
-            # print('[%s, 1]' % el)
-            res.append(f"[{el}, 1]")
+        if ".nii" not in Path(el).suffixes:
+            complete_transformationlist.append(el)
+            invert_flagslist.append(True)
     TransformationFilesList.reverse()
     for el in TransformationFilesList:
-        res.append(el)
+        complete_transformationlist.append(el)
+        invert_flagslist.append(False)
     TransformationFilesList.reverse()
-    return res
+    return complete_transformationlist, invert_flagslist
 
 
 """Apply Transform Files"""
 
 
-def antsApplyTransforms_fromtransformationList(
-    fixedFilename,
-    movingFilename,
-    TransformationFilesList,
-    interpolator,
-    OutputFilename,
-    verbose,
-):
-    command = "antsApplyTransforms -d 3"
-    command += " -i " + movingFilename
-    command += " -r " + fixedFilename
-    command += " -o " + OutputFilename
-    command += " -n " + interpolator
-    for el in TransformationFilesList:
-        command += " -t " + el
-    if verbose:
-        command += " -v 1"
-    os.system(command)
-    return None
+def run_ants_apply_registration(
+    ref_space: str,
+    input_img: str,
+    output_filename: str,
+    transforms: list[str],
+    interpolation="Linear",
+    dimensionality=3,
+    invert_flags=None,
+) -> None:
+    """
+    Apply ANTs tranforms to a moving image.
+
+    Parameters:
+        ref_space (str) : Reference space.
+        input_img (str) : Image to transform.
+        output_filename (str) : Output filename.
+        transforms (list) : List of transforms filenames.
+        interpolation (str) : Interpolation methods.
+        dimensionality (int) : dimensionality.
+        invert_flags (list) : Optional list of booleans indicating wether to invert each transform.
+    """
+
+    command = [
+        "antsApplyTransforms",
+        "--dimensionality",
+        str(dimensionality),
+        "--input",
+        input_img,
+        "--reference-image",
+        ref_space,
+        "--output",
+        output_filename,
+        "--interpolation",
+        interpolation,
+    ]
+
+    if invert_flags is None:
+        invert_flags = [False] * len(transforms)
+
+    for tfm, invert in zip(transforms, invert_flags, strict=False):
+        if invert:
+            command.extend(["--transform", f"[{tfm},1]"])
+        else:
+            command.extend(["--transform", tfm])
+    logger.info("========= Run ANTs apply transforms =========")
+
+    try:
+        subprocess.run(command, check=True)
+        logger.info(" ANTs apply transforms : done ")
+    except subprocess.CalledProcessError as e:
+        logger.info(" ERROR : ANTs apply transforms : %s", e)
 
 
 def apply_transformationlist_To_ReferenceInitSpace_Files(
-    InputFilename, OutputDirectory, TransformationFilesList
-):
-    interpolator = "BSpline[5]"
-    # interpolator = "Linear"
-    movingFilename = os.path.join(OutputDirectory, "ReferenceInitSpace_x.nii.gz")
-    OutputRefWarpedxFilename = os.path.join(
-        OutputDirectory, "ReferenceInitSpaceWarped_x.nii.gz"
-    )
-    antsApplyTransforms_fromtransformationList(
-        InputFilename,
-        movingFilename,
-        TransformationFilesList,
-        interpolator,
-        OutputRefWarpedxFilename,
-        verbose=True,
+    InputFilename: str,
+    OutputDirectory: str | Path,
+    TransformationFilesList: list[str],
+    invert_flag_list: list[bool],
+) -> None:
+    movingFilename = (Path(OutputDirectory) / "ReferenceInitSpace_x.nii.gz").as_posix()
+    OutputRefWarpedxFilename = (
+        Path(OutputDirectory) / "ReferenceInitSpaceWarped_x.nii.gz"
+    ).as_posix()
+
+    run_ants_apply_registration(
+        ref_space=InputFilename,
+        input_img=movingFilename,
+        output_filename=OutputRefWarpedxFilename,
+        transforms=TransformationFilesList,
+        dimensionality=3,
+        invert_flags=invert_flag_list,
     )
 
-    movingFilename = os.path.join(OutputDirectory, "ReferenceInitSpace_y.nii.gz")
-    OutputRefWarpedxFilename = os.path.join(
-        OutputDirectory, "ReferenceInitSpaceWarped_y.nii.gz"
-    )
-    antsApplyTransforms_fromtransformationList(
+    movingFilename = (Path(OutputDirectory) / "ReferenceInitSpace_y.nii.gz").as_posix()
+    OutputRefWarpedxFilename = (
+        Path(OutputDirectory) / "ReferenceInitSpaceWarped_y.nii.gz"
+    ).as_posix()
+
+    run_ants_apply_registration(
         InputFilename,
         movingFilename,
-        TransformationFilesList,
-        interpolator,
         OutputRefWarpedxFilename,
-        verbose=True,
+        TransformationFilesList,
+        dimensionality=3,
+        invert_flags=invert_flag_list,
     )
 
-    movingFilename = os.path.join(OutputDirectory, "ReferenceInitSpace_z.nii.gz")
-    OutputRefWarpedxFilename = os.path.join(
-        OutputDirectory, "ReferenceInitSpaceWarped_z.nii.gz"
-    )
-    antsApplyTransforms_fromtransformationList(
+    movingFilename = (Path(OutputDirectory) / "ReferenceInitSpace_z.nii.gz").as_posix()
+    OutputRefWarpedxFilename = (
+        Path(OutputDirectory) / "ReferenceInitSpaceWarped_z.nii.gz"
+    ).as_posix()
+
+    run_ants_apply_registration(
         InputFilename,
         movingFilename,
-        TransformationFilesList,
-        interpolator,
         OutputRefWarpedxFilename,
-        verbose=True,
+        TransformationFilesList,
+        dimensionality=3,
+        invert_flags=invert_flag_list,
     )
 
-    # Ajout 18/11/24
-    movingFilename = os.path.join(OutputDirectory, "mask.nii.gz")
-    OutputRefWarpedxFilename = os.path.join(OutputDirectory, "MaskWarped.nii.gz")
-    antsApplyTransforms_fromtransformationList(
+    movingFilename = (Path(OutputDirectory) / "mask.nii.gz").as_posix()
+    OutputRefWarpedxFilename = (Path(OutputDirectory) / "MaskWarped.nii.gz").as_posix()
+    run_ants_apply_registration(
         InputFilename,
         movingFilename,
-        TransformationFilesList,
-        "NearestNeighbor",
         OutputRefWarpedxFilename,
-        verbose=True,
+        TransformationFilesList,
+        interpolation="NearestNeighbor",
+        dimensionality=3,
+        invert_flags=invert_flag_list,
     )
-    #
-
-    return None
 
 
 """Create Deformation Field"""
@@ -510,33 +490,25 @@ def apply_laplacian_smoothing(OutputDirectory):
 
 
 def concat_transforms(InputFilename, JsonFilename, OutputDirectory):
-    # logger.info("========= Create Reference Init Space Files =========")
-    # create_ReferenceInitSpace(InputFilename, OutputDirectory)
+    logger.info("========= Create Reference Init Space Files =========")
+    create_ReferenceInitSpace(InputFilename, OutputDirectory)
 
-    # logger.info("========= Load & Create Transform Files =========")
+    logger.info("========= Load & Create Transform Files =========")
     TransformationFilesList = Create_transformationFilesList_from_JsonFilename(
         JsonFilename
     )
-    # MatrixTransformsFilenameList = ExtractMatrixTransforms(TransformationFilesList)
-    # ListLinearTrfComposed = run_linear_transform_composer(
-    #     TransformationFilesList, MatrixTransformsFilenameList, OutputDirectory
-    # )
-    # warpfiles_indices = identify_warpFiles(TransformationFilesList)
-    # NewTransformationFilesList = make_complete_transformationlist(
-    #     ListLinearTrfComposed, TransformationFilesList, warpfiles_indices
-    # )
+    MatrixTransformsFilenameList = ExtractMatrixTransforms(TransformationFilesList)
 
-    # logger.info("========= Create TotalAffineTransform File =========")
-    # compose_transformations(MatrixTransformsFilenameList, OutputDirectory)
+    logger.info("========= Create TotalAffineTransform File =========")
+    compose_transformations(MatrixTransformsFilenameList, OutputDirectory)
 
-    NewTransformationFilesList = make_complete_transformationlist(
-        TransformationFilesList
+    NewTransformationFilesList, InvertFlagList = (
+        make_complete_transformationlist_with_invertflags(TransformationFilesList)
     )
-    print(NewTransformationFilesList)
 
-    # logger.info("========= Apply Transform Files =========")
+    logger.info("========= Apply Transform Files =========")
     apply_transformationlist_To_ReferenceInitSpace_Files(
-        InputFilename, OutputDirectory, NewTransformationFilesList
+        InputFilename, OutputDirectory, NewTransformationFilesList, InvertFlagList
     )
 
     logger.info("========= Create Deformation Field =========")
