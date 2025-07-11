@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import sys
+from pathlib import Path
 
 import ants
 import nibabel as ni
@@ -12,16 +13,10 @@ from scipy.ndimage import laplace
 logger = logging.getLogger(__name__)
 
 
-def print_message(message):
-    print("==================================")
-    print(message)
-    print("==================================")
-
-
 """Create Reference Init Space Files"""
 
 
-def create_ReferenceInitSpace(filename, OutputDirectory):
+def create_ReferenceInitSpace(filename: str, OutputDirectory: str | Path) -> None:
     meta = ni.load(filename)
     xdim, ydim, zdim = meta.shape
     newarr = np.meshgrid(
@@ -29,40 +24,40 @@ def create_ReferenceInitSpace(filename, OutputDirectory):
     )
     ni.save(
         ni.Nifti1Image(newarr[0], meta.affine, meta.header),
-        os.path.join(OutputDirectory, "ReferenceInitSpace_x.nii.gz"),
+        Path(OutputDirectory) / "ReferenceInitSpace_x.nii.gz",
     )
     ni.save(
         ni.Nifti1Image(newarr[1], meta.affine, meta.header),
-        os.path.join(OutputDirectory, "ReferenceInitSpace_y.nii.gz"),
+        Path(OutputDirectory) / "ReferenceInitSpace_y.nii.gz",
     )
     ni.save(
         ni.Nifti1Image(newarr[2], meta.affine, meta.header),
-        os.path.join(OutputDirectory, "ReferenceInitSpace_z.nii.gz"),
+        Path(OutputDirectory) / "ReferenceInitSpace_z.nii.gz",
     )
-    # Ajout 18/11/24
+
+    # Generates FOV mapping. Will be used to restrict the distorted FOV.
     ni.save(
         ni.Nifti1Image(np.ones(meta.shape), meta.affine, meta.header),
-        os.path.join(OutputDirectory, "mask.nii.gz"),
+        Path(OutputDirectory) / "mask.nii.gz",
     )
-    #
-    return None
 
 
 """Load & Create Transform Files"""
 
 
-def Create_transformationFilesList_from_JsonFilename(JsonFilename):
+def Create_transformationFilesList_from_JsonFilename(JsonFilename: str) -> list[str]:
     with open(JsonFilename) as f:
         res = json.load(f)
     return res["tparams"]
 
 
-# ADD 13/12/24
+def is_mat_file(path: str | Path) -> bool:
+    return Path(path).suffix == ".mat"
 
 
 def compose_linear_transformations(
-    MatrixTransformsFilenameList, nbr_trf, OutputDirectory
-):
+    MatrixTransformsFilenameList: list[str], nbr_trf: int, OutputDirectory: str | Path
+) -> str:
     res = np.eye(4)
     restrictedList = MatrixTransformsFilenameList[:nbr_trf]
     # restrictedList.reverse()
@@ -71,7 +66,7 @@ def compose_linear_transformations(
     for trans in restrictedList:
         information = sitk.ReadTransform(trans)
 
-        if trans.split(".")[-1] == "mat":
+        if is_mat_file(trans):
             matrix = information.GetMatrix()
             trans = information.GetTranslation()
             if information.GetCenter() != list((0, 0, 0)):
@@ -81,9 +76,7 @@ def compose_linear_transformations(
             parameters = information.GetParameters()
             Euler = create_matrix_txtFile(parameters)
         res = res @ Euler
-    OuputFilename = os.path.join(
-        OutputDirectory, "AffineTransform_nbr" + str(nbr_trf) + ".txt"
-    )
+    OuputFilename = Path(OutputDirectory) / f"AffineTransform_nbr{nbr_trf}.txt"
     with open(OuputFilename, "w") as f:
         f.write("#Insight Transform File V1.0\n")
         f.write("#Transform 0\n")
@@ -107,24 +100,32 @@ def compose_linear_transformations(
     return OuputFilename
 
 
-def identify_warpFiles(TransformationFilesList):
+def is_warp_file(path: str | Path) -> bool:
+    return Path(path).stem.lower().endswith("warp")
+
+
+def identify_warpFiles(TransformationFilesList: list[str]) -> list[int]:
     warpfiles_indices = []
     for indice in range(len(TransformationFilesList)):
-        if TransformationFilesList[indice].split(".")[0][-4:] == "Warp":
+        if is_warp_file(TransformationFilesList[indice]):
             warpfiles_indices.append(indice)
     return warpfiles_indices
 
 
-def identify_NbrOfTransformations(warpfiles_indices):
-    nbrOfLinearTransform = []
+def identify_NbrOfTransformations(warpfiles_indices: list[int]) -> list[int]:
+    list_linear_transforms_to_warp_counts = []  # list containing in indice 0, the number of linear transforms between the first transform
+    # file and the first warp file. In indice 1, the number of linear transform between the first transform file and
+    # the second warp file...
     for el in warpfiles_indices:
-        nbrOfLinearTransform.append(el - warpfiles_indices.index(el))
-    return nbrOfLinearTransform
+        list_linear_transforms_to_warp_counts.append(el - warpfiles_indices.index(el))
+    return list_linear_transforms_to_warp_counts
 
 
 def run_linear_transform_composer(
-    TransformationFilesList, MatrixTransformsFilenameList, OutputDirectory
-):
+    TransformationFilesList: list[str],
+    MatrixTransformsFilenameList: list[str],
+    OutputDirectory: str | os.PathLike,
+) -> list[str]:
     warpfiles_indices = identify_warpFiles(TransformationFilesList)
     nbrOfLinearTransform = identify_NbrOfTransformations(warpfiles_indices)
     ListLinearTrfComposed = []
@@ -136,33 +137,34 @@ def run_linear_transform_composer(
     return ListLinearTrfComposed
 
 
-def make_complete_transformationlist(
-    ListLinearTrfComposed, TransformationFilesList, warpfiles_indices
-):
-    res = []
-    for i in range(len(ListLinearTrfComposed)):
-        res.append(ListLinearTrfComposed[i])
-        res.append(TransformationFilesList[warpfiles_indices[i]])
-        res.append(f"[{ListLinearTrfComposed[i]}, 1]")
-    res.reverse()
-    return res
+# def make_complete_transformationlist(
+#     ListLinearTrfComposed : list[str], TransformationFilesList : list[str], warpfiles_indices : list[int]
+# ):
+#     res = []
+#     for i in range(len(ListLinearTrfComposed)):
+#         res.append(ListLinearTrfComposed[i])
+#         res.append(TransformationFilesList[warpfiles_indices[i]])
+#         res.append(f"[{ListLinearTrfComposed[i]}, 1]")
+#     res.reverse()
+#     return res
 
 
 # END ADD 13/12/24
 
 
-# def make_complete_transformationlist(TransformationFilesList):
-#     res = []
-#     for el in TransformationFilesList:
-#         # print(el)
-#         if el.split('.')[1] != 'nii':
-#             # print('[%s, 1]' % el)
-#             res.append('[%s, 1]' % el)
-#     TransformationFilesList.reverse()
-#     for el in TransformationFilesList:
-#         res.append(el)
-#     TransformationFilesList.reverse()
-#     return res
+def make_complete_transformationlist(TransformationFilesList):
+    res = []
+    for el in TransformationFilesList:
+        # print(el)
+        if el.split(".")[1] != "nii":
+            # print('[%s, 1]' % el)
+            res.append(f"[{el}, 1]")
+    TransformationFilesList.reverse()
+    for el in TransformationFilesList:
+        res.append(el)
+    TransformationFilesList.reverse()
+    return res
+
 
 """Apply Transform Files"""
 
@@ -364,7 +366,7 @@ def ExtractMatrixTransforms(TransformationFilesList):
     return MatrixTransformsFilenameList
 
 
-def create_matrix_matFile(matrix, trans):
+def create_matrix_matFile(matrix: tuple, trans: tuple) -> np.ndarray:
     matrix, trans = (
         np.asarray(matrix).reshape((3, 3)),
         np.asarray(trans).reshape((3, 1)),
@@ -374,7 +376,7 @@ def create_matrix_matFile(matrix, trans):
     return np.vstack((hst, ligne))
 
 
-def create_matrix_txtFile(parameters):
+def create_matrix_txtFile(parameters: tuple) -> np.ndarray:
     matrix, trans = (
         np.asarray(parameters)[:9].reshape((3, 3)),
         np.asarray(parameters)[9:].reshape((3, 1)),
@@ -508,40 +510,43 @@ def apply_laplacian_smoothing(OutputDirectory):
 
 
 def concat_transforms(InputFilename, JsonFilename, OutputDirectory):
-    print_message("Create Reference Init Space Files")
-    create_ReferenceInitSpace(InputFilename, OutputDirectory)
+    # logger.info("========= Create Reference Init Space Files =========")
+    # create_ReferenceInitSpace(InputFilename, OutputDirectory)
 
-    print_message("Load & Create Transform Files")
+    # logger.info("========= Load & Create Transform Files =========")
     TransformationFilesList = Create_transformationFilesList_from_JsonFilename(
         JsonFilename
     )
-    MatrixTransformsFilenameList = ExtractMatrixTransforms(TransformationFilesList)
-    ListLinearTrfComposed = run_linear_transform_composer(
-        TransformationFilesList, MatrixTransformsFilenameList, OutputDirectory
-    )
-    warpfiles_indices = identify_warpFiles(TransformationFilesList)
+    # MatrixTransformsFilenameList = ExtractMatrixTransforms(TransformationFilesList)
+    # ListLinearTrfComposed = run_linear_transform_composer(
+    #     TransformationFilesList, MatrixTransformsFilenameList, OutputDirectory
+    # )
+    # warpfiles_indices = identify_warpFiles(TransformationFilesList)
+    # NewTransformationFilesList = make_complete_transformationlist(
+    #     ListLinearTrfComposed, TransformationFilesList, warpfiles_indices
+    # )
+
+    # logger.info("========= Create TotalAffineTransform File =========")
+    # compose_transformations(MatrixTransformsFilenameList, OutputDirectory)
+
     NewTransformationFilesList = make_complete_transformationlist(
-        ListLinearTrfComposed, TransformationFilesList, warpfiles_indices
+        TransformationFilesList
     )
+    print(NewTransformationFilesList)
 
-    print_message("Create TotalAffineTransform File")
-    compose_transformations(MatrixTransformsFilenameList, OutputDirectory)
-
-    # NewTransformationFilesList = make_complete_transformationlist(TransformationFilesList)
-
-    print_message("Apply Transform Files")
+    # logger.info("========= Apply Transform Files =========")
     apply_transformationlist_To_ReferenceInitSpace_Files(
         InputFilename, OutputDirectory, NewTransformationFilesList
     )
 
-    print_message("Create Deformation Field")
+    logger.info("========= Create Deformation Field =========")
     create_deformation_field_rapid(InputFilename, OutputDirectory)
 
-    print_message("Create Jacobian Determinant files")
-    create_jacobian_files(InputFilename, OutputDirectory)
+    # logger.info("========= Create Jacobian Determinant files =========")
+    # create_jacobian_files(InputFilename, OutputDirectory)
 
-    print_message("Deformation Field - Laplacian Smoothing")
-    apply_laplacian_smoothing(OutputDirectory)
+    # logger.info("========= Deformation Field - Laplacian Smoothing =========")
+    # apply_laplacian_smoothing(OutputDirectory)
     return None
 
 
