@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -83,7 +82,8 @@ def make_complete_transformationlist_with_invertflags(
              |
         Last_transform
 
-    To bring everything back to the initial space, we apply the **inverse** of each linear transform in reverse order.
+    To bring everything back to the initial space, we apply the **inverse** of each linear transform in reverse order,
+    skipping all the non-linear transformation.
 
     This results in the following application order:
 
@@ -233,7 +233,7 @@ def apply_transformationlist_To_ReferenceInitSpace_Files(
 """Create Deformation Field"""
 
 
-def change_header_to_deformation_fieldheader(ni_im):
+def change_header_to_deformation_fieldheader(ni_im: ni.Nifti1Image) -> ni.Nifti1Image:
     ni_im.header.set_intent(1007)
     ni_im.header["regular"] = b"r"
     ni_im.header.set_xyzt_units(2)
@@ -243,28 +243,20 @@ def change_header_to_deformation_fieldheader(ni_im):
     return ni_im
 
 
-def create_deformation_field_rapid(Filename, OutputDirectory):
+def create_deformation_field(Filename: str | Path, OutputDirectory: str | Path) -> None:
     meta = ni.load(Filename)
     xdim, ydim, zdim = meta.shape
     resx, resy, resz = meta.header["pixdim"][1:4]
-    metax = ni.load(OutputDirectory + "ReferenceInitSpaceWarped_x.nii.gz")
-    metay = ni.load(OutputDirectory + "ReferenceInitSpaceWarped_y.nii.gz")
-    metaz = ni.load(OutputDirectory + "ReferenceInitSpaceWarped_z.nii.gz")
-    meta_mask = ni.load(OutputDirectory + "MaskWarped.nii.gz")
+    metax = ni.load(Path(OutputDirectory) / "ReferenceInitSpaceWarped_x.nii.gz")
+    metay = ni.load(Path(OutputDirectory) / "ReferenceInitSpaceWarped_y.nii.gz")
+    metaz = ni.load(Path(OutputDirectory) / "ReferenceInitSpaceWarped_z.nii.gz")
+    meta_mask = ni.load(Path(OutputDirectory) / "MaskWarped.nii.gz")
 
     newarr = np.meshgrid(
         np.arange(xdim), np.arange(ydim), np.arange(zdim), indexing="ij"
     )
     arr_mask = meta_mask.get_fdata()
 
-    # arr_Ref = np.concatenate( ( -resx*np.reshape(arr_mask*newarr[0], meta.shape+(1,1)), resy* np.reshape(arr_mask*newarr[1], meta.shape+(1,1)), -resz*np.reshape(arr_mask*newarr[2], meta.shape+(1,1))) , -1)
-    # arr_SyN = np.concatenate( (-resx*np.reshape(arr_mask*metax.get_fdata(),(metax.shape+(1,1))), resy*np.reshape(arr_mask*metay.get_fdata(),(metay.shape+(1,1))), -resz*np.reshape(arr_mask*metaz.get_fdata(),(metaz.shape+(1,1)))) ,-1)
-
-    # Fonctionne pour GIS DWI
-    # arr_Ref = np.concatenate( ( resx*np.reshape(arr_mask*newarr[0], meta.shape+(1,1)), resy* np.reshape(arr_mask*newarr[1], meta.shape+(1,1)) ,-resz*np.reshape(arr_mask*newarr[2], meta.shape+(1,1)) ) , -1)
-    # arr_SyN = np.concatenate( (resx*np.reshape(arr_mask*metax.get_fdata(),(metax.shape+(1,1))), resy*np.reshape(arr_mask*metay.get_fdata(),(metay.shape+(1,1))) , -resz*np.reshape(arr_mask*metaz.get_fdata(),(metaz.shape+(1,1)))) ,-1)
-
-    # Fonctionne pour headerfliprawdata
     arr_Ref = np.concatenate(
         (
             -resx * np.reshape(arr_mask * newarr[0], meta.shape + (1, 1)),
@@ -286,62 +278,45 @@ def create_deformation_field_rapid(Filename, OutputDirectory):
 
     ni_im = ni.Nifti1Image(res, metax.affine, metax.header)
     ni_im = change_header_to_deformation_fieldheader(ni_im)
-    ni.save(ni_im, os.path.join(OutputDirectory, "Deformation_field_SyN.nii.gz"))
-    return None
+    ni.save(ni_im, Path(OutputDirectory) / "Deformation_field_SyN.nii.gz")
 
-
-# def create_deformation_field_rapid(Filename, OutputDirectory):
-#     meta = ni.load(Filename)
-#     xdim, ydim, zdim = meta.shape
-#     resx, resy, resz = meta.header['pixdim'][1:4]
-#     metax = ni.load(OutputDirectory+'ReferenceInitSpaceWarped_x.nii.gz')
-#     metay = ni.load(OutputDirectory+'ReferenceInitSpaceWarped_y.nii.gz')
-#     metaz = ni.load(OutputDirectory+'ReferenceInitSpaceWarped_z.nii.gz')
-#     meta_mask = ni.load(OutputDirectory+'MaskWarped.nii.gz')
-
-#     newarr = np.meshgrid(np.arange(xdim), np.arange(ydim), np.arange(zdim), indexing='ij')
-#     arr_mask = meta_mask.get_fdata()
-
-#     arr_Ref = np.concatenate( ( resx*np.reshape(arr_mask*newarr[0], meta.shape+(1,1)), resy* np.reshape(arr_mask*newarr[1], meta.shape+(1,1)), -resz*np.reshape(arr_mask*newarr[2], meta.shape+(1,1))) , -1)
-#     arr_SyN = np.concatenate( (resx*np.reshape(arr_mask*metax.get_fdata(),(metax.shape+(1,1))), resy*np.reshape(arr_mask*metay.get_fdata(),(metay.shape+(1,1))), -resz*np.reshape(arr_mask*metaz.get_fdata(),(metaz.shape+(1,1)))) ,-1)
-
-#     ni_im = ni.Nifti1Image( (arr_SyN-arr_Ref), metax.affine, metax.header)
-#     ni_im = change_header_to_deformation_fieldheader(ni_im)
-#     ni.save(ni_im, os.path.join(OutputDirectory,'Deformation_field_SyN.nii.gz'))
-#     return None
 
 """ Create Jacobian files """
 
 
-def create_jacobian_files(Filename, OutputDirectory):
+def create_jacobian_files(Filename: str | Path, OutputDirectory: str | Path) -> None:
     ants_ref = ants.image_read(Filename)
     jacobian = ants.create_jacobian_determinant_image(
         ants_ref,
-        os.path.join(OutputDirectory, "Deformation_field_SyN.nii.gz"),
+        Path(OutputDirectory) / "Deformation_field_SyN.nii.gz",
         do_log=False,
     )
     ants.image_write(
-        jacobian, os.path.join(OutputDirectory, "Jacobian_Deformation_field_SyN.nii.gz")
+        jacobian,
+        (Path(OutputDirectory) / "Jacobian_Deformation_field_SyN.nii.gz").as_posix(),
     )
     jacobian = ants.create_jacobian_determinant_image(
         ants_ref,
-        os.path.join(OutputDirectory, "Deformation_field_SyN.nii.gz"),
+        Path(OutputDirectory) / "Deformation_field_SyN.nii.gz",
         do_log=True,
     )
     ants.image_write(
         jacobian,
-        os.path.join(OutputDirectory, "JacobianLog_Deformation_field_SyN.nii.gz"),
+        (Path(OutputDirectory) / "JacobianLog_Deformation_field_SyN.nii.gz").as_posix(),
     )
-    return None
 
 
 """Create TotalAffineTransform File"""
 
 
-def ExtractMatrixTransforms(TransformationFilesList):
-    MatrixTransformsFilenameList = []
+def is_nifiti_file(path: str | Path) -> bool:
+    return ".nii" in Path(path).suffixes
+
+
+def ExtractMatrixTransforms(TransformationFilesList: list[str]) -> list[str]:
+    MatrixTransformsFilenameList = list()
     for el in TransformationFilesList:
-        if el.split(".")[1] != "nii":
+        if not (is_nifiti_file(el)):
             MatrixTransformsFilenameList.append(el)
     return MatrixTransformsFilenameList
 
@@ -366,13 +341,40 @@ def create_matrix_txtFile(parameters: tuple) -> np.ndarray:
     return np.vstack((hst, ligne))
 
 
-def compose_transformations(MatrixTransformsFilenameList, OutputDirectory):
+def write_total_affine_transform_txtformat(
+    output_filename: str | Path, matrix_array: np.ndarray
+) -> None:
+    with open(output_filename, "w") as f:
+        f.write("#Insight Transform File V1.0\n")
+        f.write("#Transform 0\n")
+        f.write("Transform: MatrixOffsetTransformBase_double_3_3\n")
+        f.write("Parameters: ")
+        f.write(
+            " ".join(
+                map(
+                    str,
+                    np.concatenate(
+                        (
+                            np.asarray(matrix_array[:3, :3]).flatten(),
+                            np.asarray(matrix_array[:3, 3].reshape((3,))),
+                        )
+                    ),
+                )
+            )
+        )
+        f.write("\n")
+        f.write("FixedParameters: 0 0 0")  # +" ".join(map(str, center)))
+
+
+def compose_transformations(
+    MatrixTransformsFilenameList: list[str], OutputDirectory: str | Path
+) -> None:
     res = np.eye(4)
     center = np.asarray((0, 0, 0))
     for trans in MatrixTransformsFilenameList:
         information = sitk.ReadTransform(trans)
 
-        if trans.split(".")[-1] == "mat":
+        if is_mat_file(trans):
             matrix = information.GetMatrix()
             trans = information.GetTranslation()
             if information.GetCenter() != list((0, 0, 0)):
@@ -386,91 +388,67 @@ def compose_transformations(MatrixTransformsFilenameList, OutputDirectory):
     T_center, T_neg_center = (
         np.eye(4),
         np.eye(4),
-    )  # Need to take into account inside the affine matrix the Center of rotation for the next script (ConvertAntsToGkgFormat.py)
+    )
     T_center[:3, 3], T_neg_center[:3, 3] = center, -center
-    res = T_center @ res @ T_neg_center
-    OuputFilename = os.path.join(OutputDirectory, "TotalAffineTransform.txt")
-    with open(OuputFilename, "w") as f:
-        f.write("#Insight Transform File V1.0\n")
-        f.write("#Transform 0\n")
-        f.write("Transform: MatrixOffsetTransformBase_double_3_3\n")
-        f.write("Parameters: ")
-        f.write(
-            " ".join(
-                map(
-                    str,
-                    np.concatenate(
-                        (
-                            np.asarray(res[:3, :3]).flatten(),
-                            np.asarray(res[:3, 3].reshape((3,))),
-                        )
-                    ),
-                )
-            )
-        )
-        f.write("\n")
-        f.write("FixedParameters: 0 0 0")  # +" ".join(map(str, center)))
+    res = (
+        T_center @ res @ T_neg_center
+    )  # Including the center of rotation in the affine matrix -> implies that the center of rotation is zero
 
-    return None
-
-
-### Ajout 18/11/2024 début
+    OutputFilename = Path(OutputDirectory) / "TotalAffineTransform.txt"
+    write_total_affine_transform_txtformat(OutputFilename, res)
 
 
 def regularize_laplacian_smoothing(
-    deformationField_array, iteration, Lambda, component
-):
+    deformationField_array: np.ndarray, iteration: int, Lambda: float, component: int
+) -> (np.ndarray, np.ndarray):
     arr = deformationField_array[:, :, :, 0, component]
     for _ in range(iteration):
         arr += Lambda * laplace(arr)
     return arr, laplace(arr)
 
 
-def apply_laplacian_smoothing(OutputDirectory):
+def apply_laplacian_smoothing(OutputDirectory: str | Path) -> None:
     meta_deformationField = ni.load(
-        os.path.join(OutputDirectory, "Deformation_field_SyN.nii.gz")
+        Path(OutputDirectory) / "Deformation_field_SyN.nii.gz"
     )
     arr_deformationField = meta_deformationField.get_fdata()
 
     arrsmoothed_deformationfield_component_x, Laplacian_deformationfield_component_x = (
-        regularize_laplacian_smoothing(arr_deformationField, 3, 0.2, 0)
+        regularize_laplacian_smoothing(
+            arr_deformationField, iteration=3, Lambda=0.2, component=0
+        )
     )
     ni_im = ni.Nifti1Image(
         Laplacian_deformationfield_component_x, meta_deformationField.affine
     )
-    ni.save(ni_im, os.path.join(OutputDirectory, "Laplacian_component_x.nii.gz"))
+    ni.save(ni_im, Path(OutputDirectory) / "Laplacian_component_x.nii.gz")
 
     arrsmoothed_deformationfield_component_y, Laplacian_deformationfield_component_y = (
-        regularize_laplacian_smoothing(arr_deformationField, 3, 0.2, 1)
+        regularize_laplacian_smoothing(
+            arr_deformationField, iteration=3, Lambda=0.2, component=1
+        )
     )
     ni_im = ni.Nifti1Image(
         Laplacian_deformationfield_component_y, meta_deformationField.affine
     )
-    ni.save(ni_im, os.path.join(OutputDirectory, "Laplacian_component_y.nii.gz"))
+    ni.save(ni_im, Path(OutputDirectory) / "Laplacian_component_y.nii.gz")
 
     arrsmoothed_deformationfield_component_z, Laplacian_deformationfield_component_z = (
-        regularize_laplacian_smoothing(arr_deformationField, 3, 0.2, 2)
+        regularize_laplacian_smoothing(
+            arr_deformationField, iteration=3, Lambda=0.2, component=2
+        )
     )
     ni_im = ni.Nifti1Image(
         Laplacian_deformationfield_component_z, meta_deformationField.affine
     )
-    ni.save(ni_im, os.path.join(OutputDirectory, "Laplacian_component_z.nii.gz"))
+    ni.save(ni_im, Path(OutputDirectory) / "Laplacian_component_z.nii.gz")
 
-    SmoothedDeformationField = np.concatenate(
-        (
-            np.reshape(
-                arrsmoothed_deformationfield_component_x,
-                meta_deformationField.shape[:4] + (1,),
-            ),
-            np.reshape(
-                arrsmoothed_deformationfield_component_y,
-                meta_deformationField.shape[:4] + (1,),
-            ),
-            np.reshape(
-                arrsmoothed_deformationfield_component_z,
-                meta_deformationField.shape[:4] + (1,),
-            ),
-        ),
+    SmoothedDeformationField = np.stack(
+        [
+            arrsmoothed_deformationfield_component_x,
+            arrsmoothed_deformationfield_component_y,
+            arrsmoothed_deformationfield_component_z,
+        ],
         axis=-1,
     )
 
@@ -479,46 +457,39 @@ def apply_laplacian_smoothing(OutputDirectory):
         meta_deformationField.affine,
         meta_deformationField.header,
     )
-    ni.save(
-        ni_im, os.path.join(OutputDirectory, "Deformation_field_SyN_Smoothed.nii.gz")
-    )
-
-    return None
-
-
-### fin Ajout 18/11/2024.
+    ni.save(ni_im, Path(OutputDirectory) / "Deformation_field_SyN_Smoothed.nii.gz")
 
 
 def concat_transforms(InputFilename, JsonFilename, OutputDirectory):
-    logger.info("========= Create Reference Init Space Files =========")
-    create_ReferenceInitSpace(InputFilename, OutputDirectory)
+    # logger.info("========= Create Reference Init Space Files =========")
+    # create_ReferenceInitSpace(InputFilename, OutputDirectory)
 
-    logger.info("========= Load & Create Transform Files =========")
-    TransformationFilesList = Create_transformationFilesList_from_JsonFilename(
-        JsonFilename
-    )
-    MatrixTransformsFilenameList = ExtractMatrixTransforms(TransformationFilesList)
+    # logger.info("========= Load & Create Transform Files =========")
+    # TransformationFilesList = Create_transformationFilesList_from_JsonFilename(
+    #     JsonFilename
+    # )
+    # MatrixTransformsFilenameList = ExtractMatrixTransforms(TransformationFilesList)
 
-    logger.info("========= Create TotalAffineTransform File =========")
-    compose_transformations(MatrixTransformsFilenameList, OutputDirectory)
+    # logger.info("========= Create TotalAffineTransform File =========")
+    # compose_transformations(MatrixTransformsFilenameList, OutputDirectory)
 
-    NewTransformationFilesList, InvertFlagList = (
-        make_complete_transformationlist_with_invertflags(TransformationFilesList)
-    )
+    # NewTransformationFilesList, InvertFlagList = (
+    #     make_complete_transformationlist_with_invertflags(TransformationFilesList)
+    # )
 
-    logger.info("========= Apply Transform Files =========")
-    apply_transformationlist_To_ReferenceInitSpace_Files(
-        InputFilename, OutputDirectory, NewTransformationFilesList, InvertFlagList
-    )
+    # logger.info("========= Apply Transform Files =========")
+    # apply_transformationlist_To_ReferenceInitSpace_Files(
+    #     InputFilename, OutputDirectory, NewTransformationFilesList, InvertFlagList
+    # )
 
-    logger.info("========= Create Deformation Field =========")
-    create_deformation_field_rapid(InputFilename, OutputDirectory)
+    # logger.info("========= Create Deformation Field =========")
+    # create_deformation_field(InputFilename, OutputDirectory)
 
-    # logger.info("========= Create Jacobian Determinant files =========")
-    # create_jacobian_files(InputFilename, OutputDirectory)
+    logger.info("========= Create Jacobian Determinant files =========")
+    create_jacobian_files(InputFilename, OutputDirectory)
 
-    # logger.info("========= Deformation Field - Laplacian Smoothing =========")
-    # apply_laplacian_smoothing(OutputDirectory)
+    logger.info("========= Deformation Field - Laplacian Smoothing =========")
+    apply_laplacian_smoothing(OutputDirectory)
     return None
 
 
