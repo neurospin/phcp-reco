@@ -461,29 +461,29 @@ def apply_laplacian_smoothing(OutputDirectory: str | Path) -> None:
 
 
 def concat_transforms(InputFilename, JsonFilename, OutputDirectory):
-    # logger.info("========= Create Reference Init Space Files =========")
-    # create_ReferenceInitSpace(InputFilename, OutputDirectory)
+    logger.info("========= Create Reference Init Space Files =========")
+    create_ReferenceInitSpace(InputFilename, OutputDirectory)
 
-    # logger.info("========= Load & Create Transform Files =========")
-    # TransformationFilesList = Create_transformationFilesList_from_JsonFilename(
-    #     JsonFilename
-    # )
-    # MatrixTransformsFilenameList = ExtractMatrixTransforms(TransformationFilesList)
+    logger.info("========= Load & Create Transform Files =========")
+    TransformationFilesList = Create_transformationFilesList_from_JsonFilename(
+        JsonFilename
+    )
+    MatrixTransformsFilenameList = ExtractMatrixTransforms(TransformationFilesList)
 
-    # logger.info("========= Create TotalAffineTransform File =========")
-    # compose_transformations(MatrixTransformsFilenameList, OutputDirectory)
+    logger.info("========= Create TotalAffineTransform File =========")
+    compose_transformations(MatrixTransformsFilenameList, OutputDirectory)
 
-    # NewTransformationFilesList, InvertFlagList = (
-    #     make_complete_transformationlist_with_invertflags(TransformationFilesList)
-    # )
+    NewTransformationFilesList, InvertFlagList = (
+        make_complete_transformationlist_with_invertflags(TransformationFilesList)
+    )
 
-    # logger.info("========= Apply Transform Files =========")
-    # apply_transformationlist_To_ReferenceInitSpace_Files(
-    #     InputFilename, OutputDirectory, NewTransformationFilesList, InvertFlagList
-    # )
+    logger.info("========= Apply Transform Files =========")
+    apply_transformationlist_To_ReferenceInitSpace_Files(
+        InputFilename, OutputDirectory, NewTransformationFilesList, InvertFlagList
+    )
 
-    # logger.info("========= Create Deformation Field =========")
-    # create_deformation_field(InputFilename, OutputDirectory)
+    logger.info("========= Create Deformation Field =========")
+    create_deformation_field(InputFilename, OutputDirectory)
 
     logger.info("========= Create Jacobian Determinant files =========")
     create_jacobian_files(InputFilename, OutputDirectory)
