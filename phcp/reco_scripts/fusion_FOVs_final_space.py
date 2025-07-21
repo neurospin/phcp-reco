@@ -5,12 +5,12 @@ Created on Wed Jan 15 15:59:26 2025
 @author: la272118
 """
 
-import glob
 import json
 import logging
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import nibabel as ni
 import nibabel.processing as proc
@@ -144,35 +144,82 @@ def arrange_ArrayToFlipHeaderFormat(arr):
     return newarr
 
 
-def load_jsonfile(JsonFilename):
-    with open(JsonFilename) as f:
+def load_jsonfile(json_filename: str | Path) -> dict:
+    with open(str(json_filename)) as f:
         dictionary = json.load(f)
     return dictionary
 
 
-def send_to_RefSpace(InputFilename, OutputFilename, JsonFilename, Interpolator):
-    dictionary = load_jsonfile(JsonFilename)
-    RefSpaceFilename = dictionary["RefSpaceFilename"]
-    tparams = dictionary["tparams"]
+def send_to_RefSpace(
+    input_filename: str | Path,
+    output_filename: str | Path,
+    json_filename: str | Path,
+    name_fov: str,
+    interpolator="Linear",
+) -> None:
+    dictionnary = load_jsonfile(json_filename)
+    refspace_filename = dictionnary["RefSpace"]
+    transforms_pipeline = dictionnary[name_fov]["tparams"]
+    run_ants_apply_registration(
+        ref_space=refspace_filename,
+        input_img=input_filename,
+        output_filename=output_filename,
+        transforms=transforms_pipeline,
+        interpolation=interpolator,
+    )
 
-    str_command = [
+
+def run_ants_apply_registration(
+    ref_space: str,
+    input_img: str,
+    output_filename: str,
+    transforms: list[str],
+    interpolation="Linear",
+    dimensionality=3,
+    invert_flags=None,
+) -> None:
+    """
+    Apply ANTs tranforms to a moving image.
+
+    Parameters:
+        ref_space (str) : Reference space.
+        input_img (str) : Image to transform.
+        output_filename (str) : Output filename.
+        transforms (list) : List of transforms filenames. (First apply last)
+        interpolation (str) : Interpolation methods.
+        dimensionality (int) : dimensionality.
+        invert_flags (list) : Optional list of booleans indicating wether to invert each transform.
+    """
+
+    command = [
         "antsApplyTransforms",
-        "-d",
-        "3",
-        "-i",
-        InputFilename,
-        "-r",
-        RefSpaceFilename,
-        "-o",
-        OutputFilename,
-        "-n",
-        Interpolator,
+        "--dimensionality",
+        str(dimensionality),
+        "--input",
+        input_img,
+        "--reference-image",
+        ref_space,
+        "--output",
+        output_filename,
+        "--interpolation",
+        interpolation,
     ]
-    for i in range(len(tparams)):
-        tparams.insert(2 * i, "-t")
-    str_command = str_command + tparams + ["-v", "1"]
-    subprocess.run(str_command)
-    return None
+
+    if invert_flags is None:
+        invert_flags = [False] * len(transforms)
+
+    for tfm, invert in zip(transforms, invert_flags, strict=False):
+        if invert:
+            command.extend(["--transform", f"[{tfm},1]"])
+        else:
+            command.extend(["--transform", tfm])
+    logger.info("========= Run ANTs apply transforms =========")
+
+    try:
+        subprocess.run(command, check=True)
+        logger.info(" ANTs apply transforms : done ")
+    except subprocess.CalledProcessError as e:
+        logger.info(" ERROR : ANTs apply transforms : %s", e)
 
 
 def send_to_RefSpace_Mask(InputFilename, OutputFilename, JsonFilename, Interpolator):
@@ -224,8 +271,8 @@ def send_to_RefSpace_Mask(InputFilename, OutputFilename, JsonFilename, Interpola
     return None
 
 
-def create_mask_FOV(inputfilename, outputfilename):
-    meta_input = ni.load(inputfilename)
+def create_mask_FOV(inputfilename: str | Path, outputfilename: str | Path) -> None:
+    meta_input = ni.load(str(inputfilename))
     res = np.ones(meta_input.shape)
     ni_im = ni.Nifti1Image(res, meta_input.affine, meta_input.header)
     ni.save(ni_im, outputfilename)
@@ -235,47 +282,14 @@ def sigmoid(x, k, x0):
     return 1 / (1 + np.exp(-k * (x - x0)))
 
 
-def create_mask_from_geomean(
-    ArchitecturePath, InputGisFilename, OutputMaskGisFilename, OutputFilename
-):
-    if not (os.path.exists(OutputMaskGisFilename)):
-        GetMaskGkg(InputGisFilename, OutputMaskGisFilename)
-    OutputMaskNiftiFilename = OutputMaskGisFilename[:-3] + "nii.gz"
-
-    if not (os.path.exists(OutputMaskNiftiFilename)):
-        ConversionGisToNifti(OutputMaskGisFilename, OutputMaskNiftiFilename)
-
-    JsonFilename = os.path.join(
-        ArchitecturePath,
-        "SendToRefSpace_DWI_" + InputGisFilename.split(".")[0].split("_")[-1] + ".json",
-    )
-    if not (os.path.exists(OutputFilename)):
-        send_to_RefSpace_Mask(
-            OutputMaskNiftiFilename, OutputFilename, JsonFilename, "NearestNeighbor"
-        )
-
-    Mask_FOV_Filename = OutputMaskNiftiFilename.split(".")[0] + "_FOV.nii.gz"
-    Mask_FOV_refSpace_Filename = (
-        OutputFilename.split("Mask")[0] + Mask_FOV_Filename.split("/")[-1]
-    )
-    weight_filename = Mask_FOV_refSpace_Filename.split(".")[0] + "_weight.nii.gz"
-
-    if not (os.path.exists(weight_filename)):
-        create_mask_FOV(OutputMaskNiftiFilename, Mask_FOV_Filename)
-        send_to_RefSpace_Mask(
-            Mask_FOV_Filename,
-            Mask_FOV_refSpace_Filename,
-            JsonFilename,
-            "NearestNeighbor",
-        )
-        meta = ni.load(Mask_FOV_refSpace_Filename)
-        arr = meta.get_fdata()
-        newarr = nd.distance_transform_edt(arr, meta.header["pixdim"][1])
-        newarr = sigmoid(newarr, 1.5, 9)
-        ni_im = ni.Nifti1Image(newarr, meta.affine, meta.header)
-        ni.save(ni_im, weight_filename)
-
-    return None
+def create_geometric_penalty_from_fov_mapping(
+    mask_fov_in_respace_filename: str | Path, geo_penalty_filename: str | Path
+) -> None:
+    meta = ni.load(mask_fov_in_respace_filename)
+    arr = meta.get_fdata()
+    newarr = nd.distance_transform_edt(arr, meta.header["pixdim"][1])
+    newarr = sigmoid(newarr, 1.5, 9)
+    ni.save(ni.Nifti1Image(newarr, meta.affine, meta.header), geo_penalty_filename)
 
 
 def create_weight(CM_filename1, CM_filename2):
@@ -669,57 +683,90 @@ def run_Fusion_QMRI(ArchitecturePath, nbrBlocks):
     return None
 
 
-def RunPipeline(ArchitecturePath, nbrBlocks, runMerger):
-    if not (runMerger):
-        GeoMeanPath = os.path.join(ArchitecturePath, "01-GeoMean")
-        InitSpacePath = os.path.join(ArchitecturePath, "02-InitSpace")
-        RefSpacePath = os.path.join(ArchitecturePath, "03-RefSpace")
+def RunPipeline(
+    working_path: str | Path, nbrBlocks: int, run_merger_flag: bool
+) -> None:
+    if not (run_merger_flag):
+        init_space_path = Path(working_path) / "01-InitSpace"
+        ref_space_path = Path(working_path) / "02-RefSpace"
 
-        ImaGenerator = glob.iglob(os.path.join(GeoMeanPath, "*.ima"))
-        print_message("CREATE MASK IN REFSPACE FROM GEOMEAN FILES")
-        for GeoMeanfilename in ImaGenerator:
-            suffixe = GeoMeanfilename.split(".")[0].split("_")[-1]
-            OutputGeoMeanMask_gis = os.path.join(
-                GeoMeanPath, "Mask_" + suffixe + ".ima"
-            )
-            OutputGeoMeanMask_RefSpace_nifti = os.path.join(
-                RefSpacePath, "Mask_" + suffixe + ".nii.gz"
-            )
-            create_mask_from_geomean(
-                ArchitecturePath,
-                GeoMeanfilename,
-                OutputGeoMeanMask_gis,
-                OutputGeoMeanMask_RefSpace_nifti,
-            )
-
-        print_message("CONVERT GIS FILES IN INITSPACE")
-        ImaGenerator = glob.iglob(os.path.join(InitSpacePath, "*.ima"))
-        for GISFilenameInInitSpaceFolder in ImaGenerator:
-            OutputNiftiFilename = GISFilenameInInitSpaceFolder[:-3] + "nii.gz"
-            if not (os.path.exists(OutputNiftiFilename)):
-                ConversionGisToNifti(GISFilenameInInitSpaceFolder, OutputNiftiFilename)
-
-        print_message("SEND NIFTI FILE IN INITSPACE TO REFSPACE")
-        ImaGenerator = glob.iglob(os.path.join(InitSpacePath, "*.nii.gz"))
-        for NiftiFilenameInInitSpaceFolder in ImaGenerator:
-            prefix_values = (
-                NiftiFilenameInInitSpaceFolder.split("/")[-1].split(".")[0].split("_")
-            )
-            # print(prefix_values, NiftiFilenameInInitSpaceFolder)
-            JsonFilename = (
-                "SendToRefSpace_" + prefix_values[0] + "_" + prefix_values[1] + ".json"
-            )
-            Output_RefSpace_nifti = os.path.join(
-                RefSpacePath,
-                "RefSpace_" + NiftiFilenameInInitSpaceFolder.split("/")[-1],
-            )
-            if not (os.path.exists(Output_RefSpace_nifti)):
-                send_to_RefSpace(
-                    NiftiFilenameInInitSpaceFolder,
-                    Output_RefSpace_nifti,
-                    os.path.join(ArchitecturePath, JsonFilename),
-                    "Linear",
+        fov_list = [
+            file.name.split(".")[0].split("_")[-1]
+            for file in init_space_path.glob("T2star_*.nii.gz")
+            if not file.name.endswith("ConfidenceMap.nii.gz")
+        ]
+        if len(fov_list) != len(list(ref_space_path.glob("*geometric_penalty.nii.gz"))):
+            logger.info("========= Creating binary FOV masks =========")
+            # This algortihsm is based on the t2star map
+            for fov in fov_list:
+                logger.info(f"========= Process FOV : {fov} =========")
+                output_mask_nifti_filename_initspace = init_space_path / "".join(
+                    ["Mask_", fov, "_FOV.nii.gz"]
                 )
+                t2star_filename = init_space_path / "".join(["T2star_", fov, ".nii.gz"])
+
+                output_mask_nifti_filename_refspace = ref_space_path / "".join(
+                    ["Mask_", fov, "_FOV.nii.gz"]
+                )
+                geometric_penalty_filename = ref_space_path / "".join(
+                    [fov, "_geometric_penalty.nii.gz"]
+                )
+
+                if not (output_mask_nifti_filename_initspace.exists()):
+                    create_mask_FOV(
+                        t2star_filename, output_mask_nifti_filename_initspace
+                    )
+
+                logger.info(f"========= Send to refspace process : {fov} =========")
+                if not (output_mask_nifti_filename_refspace.exists()):
+                    sendtorefspace_json_filename = (
+                        Path(working_path) / "SendToRefSpace_T2star.json"
+                    )
+                    send_to_RefSpace(
+                        input_filename=output_mask_nifti_filename_initspace,
+                        output_filename=output_mask_nifti_filename_refspace,
+                        json_filename=sendtorefspace_json_filename,
+                        name_fov=fov,
+                        interpolator="NearestNeighbor",
+                    )
+
+                logger.info(
+                    f"========= Geometric penalty creation process : {fov} ========="
+                )
+                if not (geometric_penalty_filename.exists()):
+                    create_geometric_penalty_from_fov_mapping(
+                        output_mask_nifti_filename_refspace, geometric_penalty_filename
+                    )
+                logger.info("Done.")
+
+        # print_message("CONVERT GIS FILES IN INITSPACE")
+        # ImaGenerator = glob.iglob(os.path.join(InitSpacePath, "*.ima"))
+        # for GISFilenameInInitSpaceFolder in ImaGenerator:
+        #     OutputNiftiFilename = GISFilenameInInitSpaceFolder[:-3] + "nii.gz"
+        #     if not (os.path.exists(OutputNiftiFilename)):
+        #         ConversionGisToNifti(GISFilenameInInitSpaceFolder, OutputNiftiFilename)
+
+        # print_message("SEND NIFTI FILE IN INITSPACE TO REFSPACE")
+        # ImaGenerator = glob.iglob(os.path.join(InitSpacePath, "*.nii.gz"))
+        # for NiftiFilenameInInitSpaceFlder in ImaGenerator:
+        #     prefix_values = (
+        #         NiftiFilenameInInitSpaceFolder.split("/")[-1].split(".")[0].split("_")
+        #     )
+        #     # print(prefix_values, NiftiFilenameInInitSpaceFolder)
+        #     JsonFilename = (
+        #         "SendToRefSpace_" + prefix_values[0] + "_" + prefix_values[1] + ".json"
+        #     )
+        #     Output_RefSpace_nifti = os.path.join(
+        #         RefSpacePath,
+        #         "RefSpace_" + NiftiFilenameInInitSpaceFolder.split("/")[-1],
+        #     )
+        #     if not (os.path.exists(Output_RefSpace_nifti)):
+        #         send_to_RefSpace(
+        #             NiftiFilenameInInitSpaceFolder,
+        #             Output_RefSpace_nifti,
+        #             os.path.join(ArchitecturePath, JsonFilename),
+        #             "Linear",
+        #         )
 
         # print_message("CORRECT PROTON-DENSITY INTENSITIES")
         # run_proton_density_all_blocks(ArchitecturePath, int(nbrBlocks))
@@ -727,9 +774,9 @@ def RunPipeline(ArchitecturePath, nbrBlocks, runMerger):
         # print_message("CORRECT DWI INTENSITIES")
         # run_DWI_all_blocks(ArchitecturePath, int(nbrBlocks))
 
-    else:
-        print_message("MERGE QMRI")
-        run_Fusion_QMRI(ArchitecturePath, int(nbrBlocks))
+    # else:
+    #     print_message("MERGE QMRI")
+    #     run_Fusion_QMRI(ArchitecturePath, int(nbrBlocks))
 
     return None
 
@@ -769,23 +816,8 @@ def main(argv=sys.argv):
     """The script's entry point."""
     logging.basicConfig(level=logging.INFO)
     args = parse_command_line(argv)
-    return RunPipeline(args.input, args.json, args.output) or 0
+    return RunPipeline(args.path, args.nbrBlocks, args.run) or 0
 
 
 if __name__ == "__main__":
     sys.exit(main())
-
-
-# def send_to_RefSpace(InputFilename, OutputFilename, RefSpaceFilename, Interpolator, tparams):
-#     str_command = ["antsApplyTransforms",
-#                     "-d", "3",
-#                     "-i", InputFilename,
-#                     "-r", RefSpaceFilename,
-#                     "-o", OutputFilename,
-#                     "-n", Interpolator]
-#     for i in range(len(tparams)):
-#         tparams.insert(2*i, "-t")
-#     str_command = str_command + tparams + ["-v", "1"]
-#     print(str_command)
-#     subprocess.run(str_command)
-#     return None
