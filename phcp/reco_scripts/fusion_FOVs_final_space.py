@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Created on Wed Jan 15 15:59:26 2025
 
@@ -7,7 +6,6 @@ Created on Wed Jan 15 15:59:26 2025
 
 import json
 import logging
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -16,6 +14,8 @@ import nibabel as ni
 import nibabel.processing as proc
 import numpy as np
 import scipy.ndimage as nd
+
+from phcp.gkg import gkg_convert_gis_to_nifti
 
 logger = logging.getLogger(__name__)
 
@@ -70,25 +70,6 @@ def print_message(message):
     print("==================================")
     print(message)
     print("==================================")
-
-
-def ConversionGisToNifti(InputGisFilename, OutputNiftiFilename):
-    subprocess.run(
-        [
-            "singularity",
-            "exec",
-            "--bind",
-            "/neurospin:/neurospin:rw",
-            "/neurospin/phcp/code/gkg/2022-12-20_gkg/2022-12-20_gkg.sif",
-            "GkgExecuteCommand",
-            "Gis2NiftiConverter",
-            "-i",
-            InputGisFilename,
-            "-o",
-            OutputNiftiFilename,
-            "-verbose",
-        ]
-    )
 
 
 def GetMaskGkg(InputGisFilename, OutputGisFilename):
@@ -150,23 +131,8 @@ def load_jsonfile(json_filename: str | Path) -> dict:
     return dictionary
 
 
-def send_to_RefSpace(
-    input_filename: str | Path,
-    output_filename: str | Path,
-    json_filename: str | Path,
-    name_fov: str,
-    interpolator="Linear",
-) -> None:
-    dictionnary = load_jsonfile(json_filename)
-    refspace_filename = dictionnary["RefSpace"]
-    transforms_pipeline = dictionnary[name_fov]["tparams"]
-    run_ants_apply_registration(
-        ref_space=refspace_filename,
-        input_img=input_filename,
-        output_filename=output_filename,
-        transforms=transforms_pipeline,
-        interpolation=interpolator,
-    )
+def sigmoid(x: np.ndarray, k: float, x0: float) -> np.ndarray:
+    return 1 / (1 + np.exp(-k * (x - x0)))
 
 
 def run_ants_apply_registration(
@@ -222,53 +188,26 @@ def run_ants_apply_registration(
         logger.info(" ERROR : ANTs apply transforms : %s", e)
 
 
-def send_to_RefSpace_Mask(InputFilename, OutputFilename, JsonFilename, Interpolator):
-    dictionary = load_jsonfile(JsonFilename)
-    RefSpaceFilename = dictionary["RefSpaceFilename"]
-    tparams = dictionary["tparams"]
-    InitSpaceFilename = dictionary["InitSpaceFilename"]
-    IntermediateFilename = InputFilename.split(".")[0] + "_inter.nii.gz"
+""" Preparation step algorithms """
 
-    str_command = [
-        "antsApplyTransforms",
-        "-d",
-        "3",
-        "-i",
-        InputFilename,
-        "-r",
-        InitSpaceFilename,
-        "-o",
-        IntermediateFilename,
-        "-n",
-        Interpolator,
-    ]
 
-    tparams_1 = tparams[-3:]
-    for i in range(len(tparams_1)):
-        tparams_1.insert(2 * i, "-t")
-    str_command_1 = str_command + tparams_1 + ["-v", "1"]
-    subprocess.run(str_command_1)
-
-    str_command = [
-        "antsApplyTransforms",
-        "-d",
-        "3",
-        "-i",
-        IntermediateFilename,
-        "-r",
-        RefSpaceFilename,
-        "-o",
-        OutputFilename,
-        "-n",
-        Interpolator,
-    ]
-
-    tparams_2 = tparams[:-3]
-    for i in range(len(tparams_2)):
-        tparams_2.insert(2 * i, "-t")
-    str_command_2 = str_command + tparams_2 + ["-v", "1"]
-    subprocess.run(str_command_2)
-    return None
+def send_to_RefSpace(
+    input_filename: str | Path,
+    output_filename: str | Path,
+    json_filename: str | Path,
+    name_fov: str,
+    interpolator="Linear",
+) -> None:
+    dictionnary = load_jsonfile(json_filename)
+    refspace_filename = dictionnary["RefSpace"]
+    transforms_pipeline = dictionnary[name_fov]["tparams"]
+    run_ants_apply_registration(
+        ref_space=refspace_filename,
+        input_img=input_filename,
+        output_filename=output_filename,
+        transforms=transforms_pipeline,
+        interpolation=interpolator,
+    )
 
 
 def create_mask_FOV(inputfilename: str | Path, outputfilename: str | Path) -> None:
@@ -276,10 +215,6 @@ def create_mask_FOV(inputfilename: str | Path, outputfilename: str | Path) -> No
     res = np.ones(meta_input.shape)
     ni_im = ni.Nifti1Image(res, meta_input.affine, meta_input.header)
     ni.save(ni_im, outputfilename)
-
-
-def sigmoid(x, k, x0):
-    return 1 / (1 + np.exp(-k * (x - x0)))
 
 
 def create_geometric_penalty_from_fov_mapping(
@@ -290,6 +225,97 @@ def create_geometric_penalty_from_fov_mapping(
     newarr = nd.distance_transform_edt(arr, meta.header["pixdim"][1])
     newarr = sigmoid(newarr, 1.5, 9)
     ni.save(ni.Nifti1Image(newarr, meta.affine, meta.header), geo_penalty_filename)
+
+
+def run_FOV_mapping_and_geometric_penaty_creation(
+    liste_fovs: list[str],
+    init_space_path: str | Path,
+    ref_space_path: str | Path,
+    working_path: str | Path,
+) -> None:
+    logger.info("========= Creating binary FOV masks =========")
+    # This algortihsm is based on the t2star map
+    for fov in liste_fovs:
+        logger.info(f"========= Process FOV : {fov} =========")
+        output_mask_nifti_filename_initspace = init_space_path / "".join(
+            ["Mask_", fov, "_FOV.nii.gz"]
+        )
+        t2star_filename = init_space_path / "".join(["T2star_", fov, ".nii.gz"])
+
+        output_mask_nifti_filename_refspace = ref_space_path / "".join(
+            ["Mask_", fov, "_FOV.nii.gz"]
+        )
+        geometric_penalty_filename = ref_space_path / "".join(
+            [fov, "_geometric_penalty.nii.gz"]
+        )
+
+        if not (output_mask_nifti_filename_initspace.exists()):
+            create_mask_FOV(t2star_filename, output_mask_nifti_filename_initspace)
+
+        logger.info(f"========= Send to refspace process : {fov} =========")
+        if not (output_mask_nifti_filename_refspace.exists()):
+            sendtorefspace_json_filename = (
+                Path(working_path) / "SendToRefSpace_T2star.json"
+            )
+            send_to_RefSpace(
+                input_filename=output_mask_nifti_filename_initspace,
+                output_filename=output_mask_nifti_filename_refspace,
+                json_filename=sendtorefspace_json_filename,
+                name_fov=fov,
+                interpolator="NearestNeighbor",
+            )
+
+        logger.info(f"========= Geometric penalty creation process : {fov} =========")
+        if not (geometric_penalty_filename.exists()):
+            create_geometric_penalty_from_fov_mapping(
+                output_mask_nifti_filename_refspace, geometric_penalty_filename
+            )
+        logger.info("Done.")
+
+
+def convert_gis_files_in_nifti_files(
+    init_space_path: str | Path,
+) -> None:
+    logger.info("========= Convert GIS files into Nifti =========")
+
+    ima_generator = init_space_path.glob("*.ima")
+    for gis_filename in ima_generator:
+        nifti_filename = gis_filename.with_name(gis_filename.stem + "nii.gz")
+        if not (nifti_filename.exists()):
+            gkg_convert_gis_to_nifti(str(gis_filename), str(nifti_filename))
+
+
+def send_nifti_files_in_init_to_refspace(
+    init_space_path: str | Path,
+    ref_space_path: str | Path,
+    working_path: str | Path,
+) -> None:
+    logger.info("========= Send nifti file in initspace to refspace =========")
+
+    nifti_generator = (
+        filename
+        for filename in init_space_path.glob("*.nii.gz")
+        if not filename.name.startswith("Mask")
+    )
+    for nifti_filename_in_initspace in nifti_generator:
+        modality, fov = (nifti_filename_in_initspace.name.split(".")[0].split("_"))[:2]
+
+        JsonFilename = "".join(["SendToRefSpace_", modality, ".json"])
+
+        output_refspace_filename = ref_space_path / nifti_filename_in_initspace.name
+        if not (output_refspace_filename.exists()):
+            logger.info(
+                f"========= Send to refspace process :{nifti_filename_in_initspace.name} ========="
+            )
+            send_to_RefSpace(
+                input_filename=nifti_filename_in_initspace,
+                output_filename=output_refspace_filename,
+                json_filename=Path(working_path) / JsonFilename,
+                name_fov=fov,
+            )
+
+
+""" Fusion modality algorithms """
 
 
 def create_weight(CM_filename1, CM_filename2):
@@ -329,6 +355,67 @@ def fill_Qvalues_Overlapping(CM_FilenameList, Qmap_FilenameList, overlap_mask):
             weight_1 * ni.load(Qmap_FilenameList[i]).get_fdata()
             + weight_2 * ni.load(Qmap_FilenameList[i + 1]).get_fdata()
         ) * overlap_mask
+    return Qvalues_Overlapping
+
+
+def fill_Qvalues_Overlapping2(
+    CM_FilenameList, Qmap_FilenameList, Mask_FilenameList, overlap_mask, i
+):
+    Qvalues_Overlapping = np.zeros(ni.load(CM_FilenameList[0]).shape)
+    mask_weight_filename = Mask_FilenameList[i + 1].split(".")[0] + "_weight.nii.gz"
+    meta_mask_weight = ni.load(mask_weight_filename)
+    arr_mask_weight = meta_mask_weight.get_fdata()
+    mask_weight_filename_i = Mask_FilenameList[i].split(".")[0] + "_weight.nii.gz"
+    meta_mask_weight_i = ni.load(mask_weight_filename_i)
+    arr_mask_weight_i = meta_mask_weight_i.get_fdata()
+
+    weight_2 = (
+        create_weight(CM_FilenameList[i], CM_FilenameList[i + 1]) * arr_mask_weight
+    )
+    weight_1 = (1 - weight_2) * arr_mask_weight_i
+    weight_2 = 1 - weight_1
+    Qvalues_Overlapping += (
+        weight_1 * ni.load(Qmap_FilenameList[i]).get_fdata()
+        + weight_2 * ni.load(Qmap_FilenameList[i + 1]).get_fdata()
+    ) * overlap_mask
+    return Qvalues_Overlapping
+
+
+def fill_Qvalues_Overlapping_OnlySpatialRegularization(
+    Qmap_FilenameList, Mask_FilenameList, overlap_mask, i
+):
+    Qvalues_Overlapping = np.zeros(ni.load(Qmap_FilenameList[0]).shape)
+    mask_weight_filename = (
+        Mask_FilenameList[i + 1].split(".")[0] + "_weight.nii.gz"
+    )  #'_FOV_weight.nii.gz'
+    meta_mask_weight = ni.load(mask_weight_filename)
+    arr_mask_weight = meta_mask_weight.get_fdata()
+    mask_weight_filename_i = (
+        Mask_FilenameList[i].split(".")[0] + "_weight.nii.gz"
+    )  #'_FOV_weight.nii.gz'
+    meta_mask_weight_i = ni.load(mask_weight_filename_i)
+    arr_mask_weight_i = meta_mask_weight_i.get_fdata()
+
+    weight_2 = arr_mask_weight
+    weight_1 = (1 - weight_2) * arr_mask_weight_i
+    weight_2 = 1 - weight_1
+
+    mask_weight_filename = Mask_FilenameList[i + 1]
+    meta_mask_weight = ni.load(mask_weight_filename)
+    arr_mask_weight = meta_mask_weight.get_fdata()
+    arr_mask_weight = np.where(arr_mask_weight < 0.001, 0, 1)
+    mask_weight_filename_i = Mask_FilenameList[i]
+    meta_mask_weight_i = ni.load(mask_weight_filename_i)
+    arr_mask_weight_i = meta_mask_weight_i.get_fdata()
+    arr_mask_weight_i = np.where(arr_mask_weight_i < 0.001, 0, 1)
+
+    weight_2 = weight_2 * arr_mask_weight
+    weight_1 = weight_1 * arr_mask_weight_i
+
+    Qvalues_Overlapping += (
+        weight_1 * ni.load(Qmap_FilenameList[i]).get_fdata()
+        + weight_2 * ni.load(Qmap_FilenameList[i + 1]).get_fdata()
+    ) * overlap_mask
     return Qvalues_Overlapping
 
 
@@ -427,266 +514,101 @@ def reconstructionv2_OnlySpatialRegularization(Qmap_FilenameList, Mask_FilenameL
     return res
 
 
-def fill_Qvalues_Overlapping2(
-    CM_FilenameList, Qmap_FilenameList, Mask_FilenameList, overlap_mask, i
-):
-    Qvalues_Overlapping = np.zeros(ni.load(CM_FilenameList[0]).shape)
-    mask_weight_filename = Mask_FilenameList[i + 1].split(".")[0] + "_weight.nii.gz"
-    meta_mask_weight = ni.load(mask_weight_filename)
-    arr_mask_weight = meta_mask_weight.get_fdata()
-    mask_weight_filename_i = Mask_FilenameList[i].split(".")[0] + "_weight.nii.gz"
-    meta_mask_weight_i = ni.load(mask_weight_filename_i)
-    arr_mask_weight_i = meta_mask_weight_i.get_fdata()
+def merge_QMRI_FOVs(
+    json_filename: str | Path, modality_to_merge: str
+) -> ni.Nifti1Image:
+    fovs_filenames_to_merge_dict = load_jsonfile(json_filename)
 
-    weight_2 = (
-        create_weight(CM_FilenameList[i], CM_FilenameList[i + 1]) * arr_mask_weight
-    )
-    weight_1 = (1 - weight_2) * arr_mask_weight_i
-    weight_2 = 1 - weight_1
-    Qvalues_Overlapping += (
-        weight_1 * ni.load(Qmap_FilenameList[i]).get_fdata()
-        + weight_2 * ni.load(Qmap_FilenameList[i + 1]).get_fdata()
-    ) * overlap_mask
-    return Qvalues_Overlapping
+    mask_filename_list = fovs_filenames_to_merge_dict["mask"]
+    qmap_filename_list = fovs_filenames_to_merge_dict[modality_to_merge]
 
+    if modality_to_merge not in DMAP_VALUES:
+        confidence_map_filename_list = fovs_filenames_to_merge_dict[
+            CM_QMAP[QMAP_VALUES.index(modality_to_merge)]
+        ]
 
-def fill_Qvalues_Overlapping_OnlySpatialRegularization(
-    Qmap_FilenameList, Mask_FilenameList, overlap_mask, i
-):
-    Qvalues_Overlapping = np.zeros(ni.load(Qmap_FilenameList[0]).shape)
-    mask_weight_filename = (
-        Mask_FilenameList[i + 1].split(".")[0] + "_weight.nii.gz"
-    )  #'_FOV_weight.nii.gz'
-    meta_mask_weight = ni.load(mask_weight_filename)
-    arr_mask_weight = meta_mask_weight.get_fdata()
-    mask_weight_filename_i = (
-        Mask_FilenameList[i].split(".")[0] + "_weight.nii.gz"
-    )  #'_FOV_weight.nii.gz'
-    meta_mask_weight_i = ni.load(mask_weight_filename_i)
-    arr_mask_weight_i = meta_mask_weight_i.get_fdata()
+    meta = ni.load(mask_filename_list[0])
 
-    weight_2 = arr_mask_weight
-    weight_1 = (1 - weight_2) * arr_mask_weight_i
-    weight_2 = 1 - weight_1
-
-    mask_weight_filename = Mask_FilenameList[i + 1]
-    meta_mask_weight = ni.load(mask_weight_filename)
-    arr_mask_weight = meta_mask_weight.get_fdata()
-    arr_mask_weight = np.where(arr_mask_weight < 0.001, 0, 1)
-    mask_weight_filename_i = Mask_FilenameList[i]
-    meta_mask_weight_i = ni.load(mask_weight_filename_i)
-    arr_mask_weight_i = meta_mask_weight_i.get_fdata()
-    arr_mask_weight_i = np.where(arr_mask_weight_i < 0.001, 0, 1)
-
-    weight_2 = weight_2 * arr_mask_weight
-    weight_1 = weight_1 * arr_mask_weight_i
-
-    Qvalues_Overlapping += (
-        weight_1 * ni.load(Qmap_FilenameList[i]).get_fdata()
-        + weight_2 * ni.load(Qmap_FilenameList[i + 1]).get_fdata()
-    ) * overlap_mask
-    return Qvalues_Overlapping
-
-
-def merge_QMRI_FOVs(ArchitecturePath, JsonFilename, QmapToMerge):
-    FOVmaterialFilename = load_jsonfile(JsonFilename)
-
-    Mask_FilenameList = FOVmaterialFilename["mask"]
-    Qmap_FilenameList = FOVmaterialFilename[QmapToMerge]
-
-    if QmapToMerge not in DMAP_VALUES:
-        CM_FilenameList = FOVmaterialFilename[CM_QMAP[QMAP_VALUES.index(QmapToMerge)]]
-
-    meta = ni.load(Mask_FilenameList[0])
-
-    if QmapToMerge not in DMAP_VALUES:
-        Qmap_bloc = reconstructionv2(
-            CM_FilenameList, Qmap_FilenameList, Mask_FilenameList
+    if modality_to_merge not in DMAP_VALUES:
+        qmap_block = reconstructionv2(
+            confidence_map_filename_list, qmap_filename_list, mask_filename_list
         )
     else:
-        Qmap_bloc = reconstructionv2_OnlySpatialRegularization(
-            Qmap_FilenameList, Mask_FilenameList
+        qmap_block = reconstructionv2_OnlySpatialRegularization(
+            qmap_filename_list, mask_filename_list
         )
 
-    Qmap_bloc = np.nan_to_num(Qmap_bloc)
-
-    ni_im = ni.Nifti1Image(Qmap_bloc, meta.affine, meta.header)
-    return ni_im
+    qmap_block = np.nan_to_num(qmap_block)
+    return ni.Nifti1Image(qmap_block, meta.affine, meta.header)
 
 
-def merge_QMRI_FOVs_old(ArchitecturePath, JsonFilename, QmapToMerge):
-    FOVmaterialFilename = load_jsonfile(JsonFilename)
-
-    Mask_FilenameList = FOVmaterialFilename["mask"]
-    Qmap_FilenameList = FOVmaterialFilename[QmapToMerge]
-    CM_FilenameList = FOVmaterialFilename[CM_QMAP[QMAP_VALUES.index(QmapToMerge)]]
-
-    meta = ni.load(Qmap_FilenameList[0])
-
-    Qmap_bloc = reconstructionv2(CM_FilenameList, Qmap_FilenameList, Mask_FilenameList)
-    Qmap_bloc = np.nan_to_num(Qmap_bloc)
-
-    ni_im = ni.Nifti1Image(Qmap_bloc, meta.affine, meta.header)
-    return ni_im
-
-
-def merge_QMRI_blocks(ArchitecturePath, value, nbrBlocks):
-    BlocksPath = os.path.join(ArchitecturePath, "04-Blocks")
+def merge_QMRI_blocks(
+    blocks_path: str | Path, modality: str, nbrBlocks: int
+) -> ni.Nifti1Image:
     for i in range(nbrBlocks):
-        blockFilename = os.path.join(
-            BlocksPath, "bloc_" + str(i + 1) + "_" + value + ".nii.gz"
-        )
+        block_filename = blocks_path / f"bloc_str(i + 1)_{modality}.nii.gz"
         if i < 1:
-            meta_first_block = ni.load(blockFilename)
+            meta_first_block = ni.load(block_filename)
             res = meta_first_block.get_fdata()
         else:
-            res = np.maximum(res, ni.load(blockFilename).get_fdata())
+            res = np.maximum(res, ni.load(block_filename).get_fdata())
     return ni.Nifti1Image(res, meta_first_block.affine, meta_first_block.header)
 
 
-def correct_proton_density_intensities(FOVmaterialFilename):
-    Mask_FilenameList = FOVmaterialFilename["mask"]
-    ProtonDensity_FilenameList = FOVmaterialFilename["proton-density"]
-
-    for i in range(len(Mask_FilenameList) - 1):
-        ProtonDensity_corrected_filename = (
-            ProtonDensity_FilenameList[i + 1].split(".")[0] + "_corr.nii.gz"
-        )
-        if not (os.path.exists(ProtonDensity_corrected_filename)):
-            Overlap = (
-                ni.load(Mask_FilenameList[i]).get_fdata()
-                * ni.load(Mask_FilenameList[i + 1]).get_fdata()
-            )
-            ProtonDensityTocorrect_meta = ni.load(ProtonDensity_FilenameList[i + 1])
-            ProtonDensityTocorrect_arr = ProtonDensityTocorrect_meta.get_fdata()
-            ProtonDensityREF_meta = ni.load(ProtonDensity_FilenameList[i])
-            ProtonDensityREF_arr = ProtonDensityREF_meta.get_fdata()
-            Ratio_correction = Overlap * (
-                ProtonDensityREF_arr / ProtonDensityTocorrect_arr
-            )
-            Ratio_correction = Ratio_correction[
-                ~(
-                    np.isinf(Ratio_correction)
-                    | np.isnan(Ratio_correction)
-                    | (Ratio_correction == 0)
-                )
-            ]
-            Ratio_correction = np.mean(Ratio_correction)
-            print(Ratio_correction)
-            ProtonDensity_corrected_arr = Ratio_correction * ProtonDensityTocorrect_arr
-            ProtonDensity_corrected_meta = ni.Nifti1Image(
-                ProtonDensity_corrected_arr,
-                ProtonDensityTocorrect_meta.affine,
-                ProtonDensityTocorrect_meta.header,
-            )
-            ni.save(ProtonDensity_corrected_meta, ProtonDensity_corrected_filename)
-    return None
+def fovs_to_be_merged_are_specified(
+    fov_material_filename: str | Path, modality: str
+) -> bool:
+    return len(fov_material_filename[modality]) > 0
 
 
-def run_DWI_all_blocks(ArchitecturePath, nbrBlocks):
-    for i in range(nbrBlocks):
-        JsonFilename = os.path.join(
-            ArchitecturePath, "bloc_" + str(i + 1) + "_intensity.json"
-        )
-        FOVmaterialFilename = load_jsonfile(JsonFilename)
-        correct_DWI_intensities(FOVmaterialFilename)
-    return None
+def run_Fusion_QMRI(working_directory: str | Path, nbr_of_blocks: int) -> None:
+    blocks_path = Path(working_directory) / "03-Blocks"
+    blocks_path.mkdir(parents=False, exist_ok=True)
 
+    whole_hemisphere_path = Path(working_directory) / "04-Reconstruction"
+    whole_hemisphere_path.mkdir(parents=False, exists_ok=True)
 
-def correct_DWI_intensities(FOVmaterialFilename):
-    Mask_FilenameList = FOVmaterialFilename["mask"]
-    ProtonDensity_FilenameList = FOVmaterialFilename["DWI_1500"]
-
-    for i in range(len(Mask_FilenameList) - 1):
-        ProtonDensity_corrected_filename = (
-            ProtonDensity_FilenameList[i + 1].split(".")[0] + "_corr.nii.gz"
-        )
-        if not (os.path.exists(ProtonDensity_corrected_filename)):
-            Overlap = (
-                ni.load(Mask_FilenameList[i]).get_fdata()
-                * ni.load(Mask_FilenameList[i + 1]).get_fdata()
-            )
-            ProtonDensityTocorrect_meta = ni.load(ProtonDensity_FilenameList[i + 1])
-            ProtonDensityTocorrect_arr = ProtonDensityTocorrect_meta.get_fdata()
-            ProtonDensityREF_meta = ni.load(ProtonDensity_FilenameList[i])
-            ProtonDensityREF_arr = ProtonDensityREF_meta.get_fdata()
-            Ratio_correction = Overlap * (
-                ProtonDensityREF_arr / ProtonDensityTocorrect_arr
-            )
-            Ratio_correction = Ratio_correction[
-                ~(
-                    np.isinf(Ratio_correction)
-                    | np.isnan(Ratio_correction)
-                    | (Ratio_correction == 0)
-                )
-            ]
-            Ratio_correction = np.mean(Ratio_correction)
-            print(Ratio_correction)
-            ProtonDensity_corrected_arr = Ratio_correction * ProtonDensityTocorrect_arr
-            ProtonDensity_corrected_meta = ni.Nifti1Image(
-                ProtonDensity_corrected_arr,
-                ProtonDensityTocorrect_meta.affine,
-                ProtonDensityTocorrect_meta.header,
-            )
-            ni.save(ProtonDensity_corrected_meta, ProtonDensity_corrected_filename)
-    return None
-
-
-def run_proton_density_all_blocks(ArchitecturePath, nbrBlocks):
-    for i in range(nbrBlocks):
-        JsonFilename = os.path.join(
-            ArchitecturePath, "bloc_" + str(i + 1) + "_intensity.json"
-        )
-        FOVmaterialFilename = load_jsonfile(JsonFilename)
-        correct_proton_density_intensities(FOVmaterialFilename)
-    return None
-
-
-def run_Fusion_QMRI(ArchitecturePath, nbrBlocks):
-    BlocksPath = os.path.join(ArchitecturePath, "04-Blocks")
-    WholeHemispherePath = os.path.join(ArchitecturePath, "05-Output")
-    for value in QMAP_VALUES:
-        for i in range(nbrBlocks):
-            print_message("Merge " + value + " FOVs from block n°" + str(i + 1))
-
-            JsonFilename = os.path.join(
-                ArchitecturePath, "bloc_" + str(i + 1) + ".json"
-            )
-            FOVmaterialFilename = load_jsonfile(JsonFilename)
-            outputFilename = os.path.join(
-                BlocksPath, "bloc_" + str(i + 1) + "_" + value + ".nii.gz"
+    for modality in QMAP_VALUES:
+        for i in range(nbr_of_blocks):
+            logger.info(
+                f"========= Merge {modality} FOVs from block n° {i + 1}  ========="
             )
 
-            if len(FOVmaterialFilename[value]) > 0:
-                if not (os.path.exists(outputFilename)):
-                    fus1 = merge_QMRI_FOVs(ArchitecturePath, JsonFilename, value)
-                    ni.save(fus1, outputFilename)
+            block_json_filename = Path(working_directory) / f"block_{str(i + 1)}.json"
+            fov_material_filename = load_jsonfile(block_json_filename)
+            output_filename = blocks_path / f"block_{str(i + 1)}_{modality}.nii.gz"
+
+            if fovs_to_be_merged_are_specified(fov_material_filename, modality):
+                if not (output_filename.exists()):
+                    block_reconstructed_nifti = merge_QMRI_FOVs(
+                        block_json_filename, modality
+                    )
+                    ni.save(block_reconstructed_nifti, output_filename)
                 else:
-                    print("Reconstructed block already exist")
+                    logger.info("Reconstructed block already exist.")
             else:
-                print("No files found for " + value + " reconstruction.")
+                logger.info(f"No filees found for {modality} reconstruction.")
 
-        print_message("Merge " + value + " block " + str(i + 1))
-        ReconstructedHemisphereFilename = os.path.join(
-            WholeHemispherePath, "Reconstructed_" + value + ".nii.gz"
+        logger.info(f"Merge {modality} block {str(i + 1)}")
+        reconstructed_hemisphere_filename = (
+            whole_hemisphere_path / f"Reconstructed_{modality}.nii.gz"
         )
-        if (
-            not (os.path.exists(ReconstructedHemisphereFilename))
-            and len(FOVmaterialFilename[value]) > 0
-        ):
-            ReconstructedWH_nifti = merge_QMRI_blocks(
-                ArchitecturePath, value, nbrBlocks
+        if not (
+            reconstructed_hemisphere_filename.exists()
+        ) and fovs_to_be_merged_are_specified(fov_material_filename, modality):
+            reconstructed_hemisphere_nifti = merge_QMRI_blocks(
+                blocks_path, modality, nbr_of_blocks
             )
-            ni.save(ReconstructedWH_nifti, ReconstructedHemisphereFilename)
+            ni.save(reconstructed_hemisphere_nifti, reconstructed_hemisphere_filename)
         else:
-            print("Whole Hemisphere reconstruction already exist")
-    return None
+            logger.info("Whole hemisphere reconstruction already exist")
 
 
 def RunPipeline(
     working_path: str | Path, nbrBlocks: int, run_merger_flag: bool
 ) -> None:
     if not (run_merger_flag):
+        logger.info("========= Prepare the materials in the refspace =========")
         init_space_path = Path(working_path) / "01-InitSpace"
         ref_space_path = Path(working_path) / "02-RefSpace"
 
@@ -696,89 +618,19 @@ def RunPipeline(
             if not file.name.endswith("ConfidenceMap.nii.gz")
         ]
         if len(fov_list) != len(list(ref_space_path.glob("*geometric_penalty.nii.gz"))):
-            logger.info("========= Creating binary FOV masks =========")
-            # This algortihsm is based on the t2star map
-            for fov in fov_list:
-                logger.info(f"========= Process FOV : {fov} =========")
-                output_mask_nifti_filename_initspace = init_space_path / "".join(
-                    ["Mask_", fov, "_FOV.nii.gz"]
-                )
-                t2star_filename = init_space_path / "".join(["T2star_", fov, ".nii.gz"])
+            run_FOV_mapping_and_geometric_penaty_creation(
+                fov_list, init_space_path, ref_space_path, working_path
+            )
 
-                output_mask_nifti_filename_refspace = ref_space_path / "".join(
-                    ["Mask_", fov, "_FOV.nii.gz"]
-                )
-                geometric_penalty_filename = ref_space_path / "".join(
-                    [fov, "_geometric_penalty.nii.gz"]
-                )
+        convert_gis_files_in_nifti_files(init_space_path)
 
-                if not (output_mask_nifti_filename_initspace.exists()):
-                    create_mask_FOV(
-                        t2star_filename, output_mask_nifti_filename_initspace
-                    )
+        send_nifti_files_in_init_to_refspace(
+            init_space_path, ref_space_path, working_path
+        )
 
-                logger.info(f"========= Send to refspace process : {fov} =========")
-                if not (output_mask_nifti_filename_refspace.exists()):
-                    sendtorefspace_json_filename = (
-                        Path(working_path) / "SendToRefSpace_T2star.json"
-                    )
-                    send_to_RefSpace(
-                        input_filename=output_mask_nifti_filename_initspace,
-                        output_filename=output_mask_nifti_filename_refspace,
-                        json_filename=sendtorefspace_json_filename,
-                        name_fov=fov,
-                        interpolator="NearestNeighbor",
-                    )
-
-                logger.info(
-                    f"========= Geometric penalty creation process : {fov} ========="
-                )
-                if not (geometric_penalty_filename.exists()):
-                    create_geometric_penalty_from_fov_mapping(
-                        output_mask_nifti_filename_refspace, geometric_penalty_filename
-                    )
-                logger.info("Done.")
-
-        # print_message("CONVERT GIS FILES IN INITSPACE")
-        # ImaGenerator = glob.iglob(os.path.join(InitSpacePath, "*.ima"))
-        # for GISFilenameInInitSpaceFolder in ImaGenerator:
-        #     OutputNiftiFilename = GISFilenameInInitSpaceFolder[:-3] + "nii.gz"
-        #     if not (os.path.exists(OutputNiftiFilename)):
-        #         ConversionGisToNifti(GISFilenameInInitSpaceFolder, OutputNiftiFilename)
-
-        # print_message("SEND NIFTI FILE IN INITSPACE TO REFSPACE")
-        # ImaGenerator = glob.iglob(os.path.join(InitSpacePath, "*.nii.gz"))
-        # for NiftiFilenameInInitSpaceFlder in ImaGenerator:
-        #     prefix_values = (
-        #         NiftiFilenameInInitSpaceFolder.split("/")[-1].split(".")[0].split("_")
-        #     )
-        #     # print(prefix_values, NiftiFilenameInInitSpaceFolder)
-        #     JsonFilename = (
-        #         "SendToRefSpace_" + prefix_values[0] + "_" + prefix_values[1] + ".json"
-        #     )
-        #     Output_RefSpace_nifti = os.path.join(
-        #         RefSpacePath,
-        #         "RefSpace_" + NiftiFilenameInInitSpaceFolder.split("/")[-1],
-        #     )
-        #     if not (os.path.exists(Output_RefSpace_nifti)):
-        #         send_to_RefSpace(
-        #             NiftiFilenameInInitSpaceFolder,
-        #             Output_RefSpace_nifti,
-        #             os.path.join(ArchitecturePath, JsonFilename),
-        #             "Linear",
-        #         )
-
-        # print_message("CORRECT PROTON-DENSITY INTENSITIES")
-        # run_proton_density_all_blocks(ArchitecturePath, int(nbrBlocks))
-
-        # print_message("CORRECT DWI INTENSITIES")
-        # run_DWI_all_blocks(ArchitecturePath, int(nbrBlocks))
-
-    # else:
-    #     print_message("MERGE QMRI")
-    #     run_Fusion_QMRI(ArchitecturePath, int(nbrBlocks))
-
-    return None
+    else:
+        logger.info("========= Merge FOVs in the refspace =========")
+        run_Fusion_QMRI(working_path, nbrBlocks)
 
 
 def parse_command_line(argv):
