@@ -381,134 +381,174 @@ def fill_Qvalues_Overlapping2(
     return Qvalues_Overlapping
 
 
-def fill_Qvalues_Overlapping_OnlySpatialRegularization(
-    Qmap_FilenameList, Mask_FilenameList, overlap_mask, i
-):
-    Qvalues_Overlapping = np.zeros(ni.load(Qmap_FilenameList[0]).shape)
-    mask_weight_filename = (
-        Mask_FilenameList[i + 1].split(".")[0] + "_weight.nii.gz"
-    )  #'_FOV_weight.nii.gz'
-    meta_mask_weight = ni.load(mask_weight_filename)
-    arr_mask_weight = meta_mask_weight.get_fdata()
-    mask_weight_filename_i = (
-        Mask_FilenameList[i].split(".")[0] + "_weight.nii.gz"
-    )  #'_FOV_weight.nii.gz'
-    meta_mask_weight_i = ni.load(mask_weight_filename_i)
-    arr_mask_weight_i = meta_mask_weight_i.get_fdata()
-
-    weight_2 = arr_mask_weight
-    weight_1 = (1 - weight_2) * arr_mask_weight_i
-    weight_2 = 1 - weight_1
-
-    mask_weight_filename = Mask_FilenameList[i + 1]
-    meta_mask_weight = ni.load(mask_weight_filename)
-    arr_mask_weight = meta_mask_weight.get_fdata()
-    arr_mask_weight = np.where(arr_mask_weight < 0.001, 0, 1)
-    mask_weight_filename_i = Mask_FilenameList[i]
-    meta_mask_weight_i = ni.load(mask_weight_filename_i)
-    arr_mask_weight_i = meta_mask_weight_i.get_fdata()
-    arr_mask_weight_i = np.where(arr_mask_weight_i < 0.001, 0, 1)
-
-    weight_2 = weight_2 * arr_mask_weight
-    weight_1 = weight_1 * arr_mask_weight_i
-
-    Qvalues_Overlapping += (
-        weight_1 * ni.load(Qmap_FilenameList[i]).get_fdata()
-        + weight_2 * ni.load(Qmap_FilenameList[i + 1]).get_fdata()
-    ) * overlap_mask
-    return Qvalues_Overlapping
+def load_geometric_penalty(filename_list: list[str], indice: int) -> np.ndarray:
+    fov = Path(filename_list[indice]).name.split("_")[1]
+    meta = ni.load(f"{fov}_geometric_penalty.nii.gz")
+    return meta.get_fdata()
 
 
-def reconstructionv2(CM_FilenameList, Qmap_FilenameList, Mask_FilenameList):
+def load_mask_from_geometric_penalty(
+    filename_list: list[str], indice: int
+) -> np.ndarray:
+    fov = Path(filename_list[indice]).name.split("_")[1]
+    meta = ni.load(f"{fov}_geometric_penalty.nii.gz")
+    arr = meta.get_fdata()
+    arr = np.where(arr < 0.001, 0, 1)
+    return arr
+
+
+def reconstruction(
+    cm_filenames_list: list[str],
+    qmap_filenames_list: list[str],
+    mask_filenames_list: list[str],
+    modality_in_DMAP_VALUES: bool,
+) -> np.ndarray:
     res = (
-        ni.load(Mask_FilenameList[0]).get_fdata()
-        * ni.load(Qmap_FilenameList[0]).get_fdata()
+        load_mask_from_geometric_penalty(mask_filenames_list, indice=0)
+        * ni.load(qmap_filenames_list[0]).get_fdata()
     )
-    for i in range(len(CM_FilenameList) - 1):
-        meta_mask = ni.load(Mask_FilenameList[i + 1])
-        arr_mask = meta_mask.get_fdata()
-        meta_mask_i = ni.load(Mask_FilenameList[i])
-        arr_mask_i = meta_mask_i.get_fdata()
+    for i in range(len(qmap_filenames_list) - 1):
+        arr_mask = load_mask_from_geometric_penalty(mask_filenames_list, indice=i + 1)
+        arr_mask_i = load_geometric_penalty(mask_filenames_list, indice=i)
 
-        if i < 1:
+        if i == 0:
             overlap_mask = arr_mask * arr_mask_i
             res = (
-                (
-                    (
-                        ni.load(Mask_FilenameList[i + 1]).get_fdata()
-                        * ni.load(Qmap_FilenameList[i + 1]).get_fdata()
-                    )
-                    + res
-                )
-                * np.logical_not(overlap_mask)
-            )  # fill_Qvalues_nonOverlapping2(Mask_FilenameList, Qmap_FilenameList, res, overlap_mask, i)
-
+                (arr_mask * ni.load(qmap_filenames_list[i + 1]).get_fdata()) + res
+            ) * np.logical_not(overlap_mask)
         else:
-            meta_mask_previous = ni.load(Mask_FilenameList[i - 1])
-            arr_mask_previous = meta_mask_previous.get_fdata()
+            arr_mask_previous = load_mask_from_geometric_penalty(
+                mask_filenames_list, indice=i - 1
+            )
             overlap_mask = (
                 arr_mask * arr_mask_i * np.int8(np.logical_not(arr_mask_previous))
-            )  # case where mask[0] overlap with mask[1] and mask[2]
+            )
             res = (
-                (
-                    (
-                        ni.load(Mask_FilenameList[i + 1]).get_fdata()
-                        * ni.load(Qmap_FilenameList[i + 1]).get_fdata()
-                    )
-                    * np.logical_not(arr_mask * arr_mask_previous)
-                    + res
-                )
-                * np.logical_not(overlap_mask)
-            )  # fill_Qvalues_nonOverlapping2(Mask_FilenameList, Qmap_FilenameList, res, overlap_mask, i)
+                (arr_mask * ni.load(qmap_filenames_list[i + 1]).get_fdata())
+                * np.logical_not(arr_mask * arr_mask_previous)
+                + res
+            ) * np.logical_not(overlap_mask)
 
+        if modality_in_DMAP_VALUES:
+            res += np.nan_to_num(
+                fill_Qvalues_Overlapping_OnlySpatialRegularization(
+                    qmap_filenames_list, mask_filenames_list, overlap_mask, i
+                )
+            )
+        else:
+            res += np.nan_to_num(
+                fill_Qvalues_Overlapping2(
+                    cm_filenames_list,
+                    qmap_filenames_list,
+                    mask_filenames_list,
+                    overlap_mask,
+                    i,
+                )
+            )
+    return res
+
+
+def reconstruction_relaxometry(
+    cm_filenames_list: list[str],
+    qmap_filenames_list: list[str],
+    mask_filenames_list: list[str],
+) -> np.ndarray:
+    res = (
+        load_mask_from_geometric_penalty(mask_filenames_list, indice=0)
+        * ni.load(qmap_filenames_list[0]).get_fdata()
+    )
+    for i in range(len(cm_filenames_list) - 1):
+        arr_mask = load_mask_from_geometric_penalty(mask_filenames_list, indice=i + 1)
+        arr_mask_i = load_geometric_penalty(mask_filenames_list, indice=i)
+
+        if i == 0:
+            overlap_mask = arr_mask * arr_mask_i
+            res = (
+                (arr_mask * ni.load(qmap_filenames_list[i + 1]).get_fdata()) + res
+            ) * np.logical_not(overlap_mask)
+        else:
+            arr_mask_previous = load_mask_from_geometric_penalty(
+                mask_filenames_list, indice=i - 1
+            )
+            overlap_mask = (
+                arr_mask * arr_mask_i * np.int8(np.logical_not(arr_mask_previous))
+            )
+            res = (
+                (arr_mask * ni.load(qmap_filenames_list[i + 1]).get_fdata())
+                * np.logical_not(arr_mask * arr_mask_previous)
+                + res
+            ) * np.logical_not(overlap_mask)
         res += np.nan_to_num(
             fill_Qvalues_Overlapping2(
-                CM_FilenameList, Qmap_FilenameList, Mask_FilenameList, overlap_mask, i
+                cm_filenames_list,
+                qmap_filenames_list,
+                mask_filenames_list,
+                overlap_mask,
+                i,
             )
         )
     return res
 
 
-def reconstructionv2_OnlySpatialRegularization(Qmap_FilenameList, Mask_FilenameList):
-    meta_mask = ni.load(Mask_FilenameList[0].split(".")[0] + "_weight.nii.gz")
-    arr_mask = meta_mask.get_fdata()
-    arr_mask = np.where(arr_mask < 0.001, 0, 1)
-    res = arr_mask * ni.load(Qmap_FilenameList[0]).get_fdata()
-    for i in range(len(Qmap_FilenameList) - 1):
-        meta_mask = ni.load(Mask_FilenameList[i + 1].split(".")[0] + "_weight.nii.gz")
-        arr_mask = meta_mask.get_fdata()
-        arr_mask = np.where(arr_mask < 0.001, 0, 1)
-        meta_mask_i = ni.load(Mask_FilenameList[i].split(".")[0] + "_weight.nii.gz")
-        arr_mask_i = meta_mask_i.get_fdata()
-        arr_mask_i = np.where(arr_mask_i < 0.001, 0, 1)
+def fill_Qvalues_Overlapping_OnlySpatialRegularization(
+    qmap_filenames_list: list[str],
+    mask_filenames_list: list[str],
+    overlap_mask: np.ndarray,
+    i: int,
+) -> np.ndarray:
+    Qvalues_Overlapping = np.zeros(ni.load(qmap_filenames_list[0]).shape)
+    arr_mask_weight = load_geometric_penalty(mask_filenames_list, indice=i + 1)
 
-        if i < 1:
+    arr_mask_weight_i = load_geometric_penalty(mask_filenames_list, indice=i)
+
+    weight_2 = arr_mask_weight
+    weight_1 = (1 - weight_2) * arr_mask_weight_i
+    weight_2 = 1 - weight_1
+
+    arr_mask = load_mask_from_geometric_penalty(mask_filenames_list, indice=i + 1)
+    arr_mask_i = load_mask_from_geometric_penalty(mask_filenames_list, indice=i)
+
+    weight_2 = weight_2 * arr_mask
+    weight_1 = weight_1 * arr_mask_i
+
+    Qvalues_Overlapping += (
+        weight_1 * ni.load(qmap_filenames_list[i]).get_fdata()
+        + weight_2 * ni.load(qmap_filenames_list[i + 1]).get_fdata()
+    ) * overlap_mask
+    return Qvalues_Overlapping
+
+
+def reconstruction_OnlySpatialRegularization(
+    qmap_filenames_list: list[str],
+    mask_filenames_list: list[str],
+) -> np.ndarray:
+    arr_mask = load_mask_from_geometric_penalty(mask_filenames_list, indice=0)
+    res = arr_mask * ni.load(qmap_filenames_list[0]).get_fdata()
+    for i in range(len(qmap_filenames_list) - 1):
+        arr_mask = load_mask_from_geometric_penalty(mask_filenames_list, indice=i + 1)
+        arr_mask_i = load_mask_from_geometric_penalty(mask_filenames_list, indice=i)
+
+        if i == 0:
             overlap_mask = arr_mask * arr_mask_i
             res = (
-                ((arr_mask * ni.load(Qmap_FilenameList[i + 1]).get_fdata()) + res)
-                * np.logical_not(overlap_mask)
-            )  # fill_Qvalues_nonOverlapping2(Mask_FilenameList, Qmap_FilenameList, res, overlap_mask, i)
+                (arr_mask * ni.load(qmap_filenames_list[i + 1]).get_fdata()) + res
+            ) * np.logical_not(overlap_mask)
         else:
-            meta_mask_previous = ni.load(
-                Mask_FilenameList[i - 1].split(".")[0] + "_weight.nii.gz"
+            arr_mask_previous = load_mask_from_geometric_penalty(
+                mask_filenames_list, indice=i - 1
             )
-            arr_mask_previous = meta_mask_previous.get_fdata()
-            arr_mask_previous = np.where(arr_mask_previous < 0.001, 0, 1)
             overlap_mask = (
                 arr_mask * arr_mask_i * np.int8(np.logical_not(arr_mask_previous))
             )  # case where mask[0] overlap with mask[1] and mask[2]
             res = (
-                (
-                    (arr_mask * ni.load(Qmap_FilenameList[i + 1]).get_fdata())
-                    * np.logical_not(arr_mask * arr_mask_previous)
-                    + res
-                )
-                * np.logical_not(overlap_mask)
-            )  # fill_Qvalues_nonOverlapping2(Mask_FilenameList, Qmap_FilenameList, res, overlap_mask, i)
+                (arr_mask * ni.load(qmap_filenames_list[i + 1]).get_fdata())
+                * np.logical_not(arr_mask * arr_mask_previous)
+                + res
+            ) * np.logical_not(overlap_mask)
 
         res += np.nan_to_num(
             fill_Qvalues_Overlapping_OnlySpatialRegularization(
-                Qmap_FilenameList, Mask_FilenameList, overlap_mask, i
+                qmap_filenames_list, mask_filenames_list, overlap_mask, i
             )
         )
     return res
@@ -522,23 +562,24 @@ def merge_QMRI_FOVs(
     mask_filename_list = fovs_filenames_to_merge_dict["mask"]
     qmap_filename_list = fovs_filenames_to_merge_dict[modality_to_merge]
 
-    if modality_to_merge not in DMAP_VALUES:
+    is_in_DMAP_VALUES = modality_to_merge not in DMAP_VALUES
+
+    if not (is_in_DMAP_VALUES):
         confidence_map_filename_list = fovs_filenames_to_merge_dict[
             CM_QMAP[QMAP_VALUES.index(modality_to_merge)]
         ]
-
-    meta = ni.load(mask_filename_list[0])
-
-    if modality_to_merge not in DMAP_VALUES:
-        qmap_block = reconstructionv2(
-            confidence_map_filename_list, qmap_filename_list, mask_filename_list
-        )
     else:
-        qmap_block = reconstructionv2_OnlySpatialRegularization(
-            qmap_filename_list, mask_filename_list
-        )
+        confidence_map_filename_list = []
+
+    qmap_block = reconstruction(
+        confidence_map_filename_list,
+        qmap_filename_list,
+        mask_filename_list,
+        is_in_DMAP_VALUES,
+    )
 
     qmap_block = np.nan_to_num(qmap_block)
+    meta = ni.load(mask_filename_list[0])
     return ni.Nifti1Image(qmap_block, meta.affine, meta.header)
 
 
