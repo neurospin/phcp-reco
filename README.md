@@ -479,30 +479,129 @@ The reconstruction pipeline consists of:
 1. Obtaining the deformation fields that bring all fields of view into spatial correspondence. The registration strategy is described in the publications, but the details of registration can differ for different specimens. As a result, no registration scripts are distributed at the moment.
 2. Applying these deformation fields to each field of view, and merging the data into a single image.
 
+---
 
-### Deformation fields
+### I. Registration process & transformation concatenation
 
-A chain of spatial transformations, both linear and non-linear, is described in a JSON file associated to each modality for each field of view:
+---
+
+### II. Merging Fields of View into Final Space : `fusion_FOVs_final_space.py`
+
+This script merges multiple fields of view (FOVs) from the **initial space** into the **final space**. It consists of two main stages, controlled via the `--run` flag.
+
+### Example Workflow
+
+```bash
+# Step 1: Prepare final-space materials (default mode)
+python reconstruct.py -p fov/derivatives/Registration/sub-{subjectID}/fusion/
+
+# Step 2: Merge using 3 blocks
+python reconstruct.py -p fov/derivatives/Registration/sub-{subjectID}/fusion/ --run -n 3
+```
+
+#### Stage 1: Prepare Materials (Default, without `--run`)
+
+This stage generates all necessary materials for reconstruction in the final space, including:
+
+- Geometric penalty maps
+- Each modality transformed into the final space
+
+All output will be stored in a folder created automatically and named `02-RefSpace`.
+
+#### Required Inputs
+Considering `Fusion` folder as the working directory :
+```
+fov/derivatives/Registration
+└── sub-{subjectID}
+    └── Fusion
+        └── 01-InitSpace/
+            └── {modality}_{fov}.nii.gz
+            └── ...
+        └── SendToRefSpace_{modality}.json
+        └── SendToRefSpace_...
+```
+
+##### 1. `01-InitSpace/` folder
+
+Must contain your original FOV data files, for example:
+
+```
+T2star_InfPos.nii.gz
+T2star_InfMid.nii.gz
+...
+```
+
+- File naming format: `{modality}_{FOV}.nii.gz`, where `{modality}` in [ `QT1`, `QT2`, `QT2star`, `ADC1500`, `ADC4500`, `ADC8000`, `FA1500`, `FA4500`, `FA8000`, `TransDiff1500`, `TransDiff4500`, `TransDiff8000`,  `ParaDiff1500`, `ParaDiff4500`, `ParaDiff8000`, `GFA1500`, `GFA4500`, `GFA8000`, `T2w`] and `{FOV}` can be any custom label (e.g., `InfPos`, `InfMid`, etc.)
+- Supported formats: **GIS** or **NIfTI**
+
+##### 2. `SendToRefSpace_{modality}.json` files
+
+You must provide one JSON file per modality (`QT1`, `QT2`, `QT2star`, `DWI`-one key for all DWI modalities-, `T2W`), with the following structure:
+
+```json
+{
+  "RefSpace": "refspace_filename_path",
+  "InfPos": {
+    "tparams": ["last_transformation_path", ..., "first_transformation_path"]
+  },
+  "InfMid": {
+    ...
+  }
+}
+```
+- `RefSpace` points to a Nifti file that specifies the geometry of the whole-brain space that was used for the registration process
+
+- `tparams` is a list of filenames that describe each step of the transformation chain. Each filename can point to either a linear transformation (`.txt` or `.mat` or a non-linear deformation field (`.nii.gz`). The files must be sorted from the last transformation file to the first.
+
+---
+
+#### Stage 2: Merge Blocks (with `--run` and `-n`)
+
+**This stage must be performed after the stage 1.** Merges the transformed data located in `02-RefSpace` using:
+
+- **Geometric penalties** for all modalities
+- **Geometric penalties** & **Goodness-of-fit weighting** for relaxometric maps
+
+Stores the reconstructed blocks in `03-Blocks` and the final reconstruction in `04-Reconstruction`.
+
+#### Required Inputs
 
 ```
 fov/derivatives/Registration
 └── sub-{subjectID}
     └── Fusion
-        └── SendToRefSpace_{Modality}_{FoV}.json
+        └── 02-RefSpace/
+            └── ...
+        └── block_{i}.json
+        └── block...
 ```
 
-The format of this JSON file is as follows:
+##### 1. `block_{i}.json` files
+
+For `n` blocks, create `n` files named:
+
+```
+block_1.json
+block_2.json
+...
+block_n.json
+```
+
+Each file should follow this structure:
 
 ```json
 {
-    "RefSpaceFilename": ".../SpaceOfReference.nii.gz",
-    "tparams": [".../transformation1.txt", ".../transformation2.nii.gz", "..."]
+  "mask": ["mask_file_1", ..., "mask_file_n"],
+  "modality_1": ["modality1_file_1", ..., "modality1_file_n"],
+  ...
 }
 ```
 
-- `RefSpaceFilename` points to a Nifti file that specifies the geometry of the whole-brain space that was used for the registration process
+#### Important Notes:
 
-- `tparams` is a list of filenames that describe each step of the transformation chain. Each filename can point to either a linear transformation (`.txt` or `.mat` or a non-linear deformation field (`.nii.gz`).
+- File paths must be **ordered continuously** from one anatomical end to the other (e.g., `InfPos` > `InfMid` > `InfAnt`).
+- Reverse order (e.g., `InfAnt` > `InfMid` > `InfPos`) is also valid, as long as the sequence is consistent.
+- Do **not skip any FOVs**.
 
 
 ## Data publication

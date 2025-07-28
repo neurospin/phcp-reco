@@ -1,9 +1,3 @@
-"""
-Created on Wed Jan 15 15:59:26 2025
-
-@author: la272118
-"""
-
 import json
 import logging
 import subprocess
@@ -21,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 QMAP_VALUES = [
-    "T2w",
     "QT1",
     "QT2",
     "QT2star",
@@ -40,12 +33,10 @@ QMAP_VALUES = [
     "GFA1500",
     "GFA4500",
     "GFA8000",
+    "T2w",
 ]
-# QMAP_VALUES = ['QT1', 'QT2', 'QT2star', 'proton-density']
-# CM_QMAP = ['CM_T1', 'CM_T2', 'CM_T2star', 'CM_T2star']
 CM_QMAP = ["CM_T1", "CM_T2", "CM_T2star"]
 DMAP_VALUES = [
-    "T2w",
     "ADC1500",
     "ADC4500",
     "ADC8000",
@@ -61,68 +52,9 @@ DMAP_VALUES = [
     "GFA1500",
     "GFA4500",
     "GFA8000",
-]  #'T2w',
+]
 
 """ Miscellaneous algorithms """
-
-
-def print_message(message):
-    print("==================================")
-    print(message)
-    print("==================================")
-
-
-def GetMaskGkg(InputGisFilename, OutputGisFilename):
-    subprocess.run(
-        [
-            "singularity",
-            "exec",
-            "--bind",
-            "/neurospin:/neurospin:rw",
-            "/neurospin/phcp/code/gkg/2022-12-20_gkg/2022-12-20_gkg.sif",
-            "GkgExecuteCommand",
-            "GetMask",
-            "-i",
-            InputGisFilename,
-            "-o",
-            OutputGisFilename,
-            "-a",
-            "1",
-            "-format",
-            "Gis",
-            "-verbose",
-        ]
-    )
-
-
-# Utilisation de cette fonction sur GIS file geomean pour avoir un masque propre
-def create_ArrayFromGisFilename_16bit(GisFilename):
-    DimFilename = GisFilename[:-3] + "dim"
-    with open(DimFilename) as f:
-        TxtInDimFile = f.read()
-    TxtFirstLine = TxtInDimFile.split("\n")[0]
-    shape = tuple(np.int16(TxtFirstLine.split(" ")))[:-1]
-    arr = np.fromfile(GisFilename, np.float16())
-    arr = np.reshape(arr, shape, order="F")
-    return arr
-
-
-def create_ArrayFromGisFilename_32bit(GisFilename):
-    DimFilename = GisFilename[:-3] + "dim"
-    with open(DimFilename) as f:
-        TxtInDimFile = f.read()
-    TxtFirstLine = TxtInDimFile.split("\n")[0]
-    shape = tuple(np.int16(TxtFirstLine.split(" ")))[:-1]
-    arr = np.fromfile(GisFilename, np.float32())
-    arr = np.reshape(arr, shape, order="F")
-    return arr
-
-
-def arrange_ArrayToFlipHeaderFormat(arr):
-    newarr = np.swapaxes(arr, 1, 2)
-    newarr = np.flip(newarr, 1)
-    newarr = np.flip(newarr, 0)
-    return newarr
 
 
 def load_jsonfile(json_filename: str | Path) -> dict:
@@ -280,7 +212,7 @@ def convert_gis_files_in_nifti_files(
 
     ima_generator = init_space_path.glob("*.ima")
     for gis_filename in ima_generator:
-        nifti_filename = gis_filename.with_name(gis_filename.stem + "nii.gz")
+        nifti_filename = gis_filename.with_name(gis_filename.stem + ".nii.gz")
         if not (nifti_filename.exists()):
             gkg_convert_gis_to_nifti(str(gis_filename), str(nifti_filename))
 
@@ -300,6 +232,9 @@ def send_nifti_files_in_init_to_refspace(
     for nifti_filename_in_initspace in nifti_generator:
         modality, fov = (nifti_filename_in_initspace.name.split(".")[0].split("_"))[:2]
 
+        if modality in DMAP_VALUES:
+            modality = "DWI"
+
         JsonFilename = "".join(["SendToRefSpace_", modality, ".json"])
 
         output_refspace_filename = ref_space_path / nifti_filename_in_initspace.name
@@ -318,9 +253,9 @@ def send_nifti_files_in_init_to_refspace(
 """ Fusion modality algorithms """
 
 
-def create_weight(CM_filename1, CM_filename2):
-    CM_1 = ni.load(CM_filename1)
-    CM_2 = ni.load(CM_filename2)
+def create_weight(cm_filename1: str, cm_filename2: str) -> np.ndarray:
+    CM_1 = ni.load(cm_filename1)
+    CM_2 = ni.load(cm_filename2)
 
     CM_arr1 = proc.smooth_image(CM_1, proc.sigma2fwhm(0.2)).get_fdata()
     CM_arr2 = proc.smooth_image(CM_2, proc.sigma2fwhm(0.2)).get_fdata()
@@ -328,62 +263,10 @@ def create_weight(CM_filename1, CM_filename2):
     return sigmoid(np.log(CM_arr1 / CM_arr2), 4, 0)
 
 
-def create_mask_overlap_block(Mask_FilenameList):
-    overlap_mask = np.zeros(ni.load(Mask_FilenameList[0]).shape, dtype=np.int8())
-    for i in range(len(Mask_FilenameList) - 1):
-        overlap_mask |= np.int8(ni.load(Mask_FilenameList[i]).get_fdata()) & np.int8(
-            ni.load(Mask_FilenameList[i + 1]).get_fdata()
-        )
-    return overlap_mask
-
-
-def fill_Qvalues_nonOverlapping(Mask_FilenameList, Qmap_FilenameList, overlap_mask):
-    Qvalues_nonOverlapping = np.zeros(ni.load(Mask_FilenameList[0]).shape)
-    for mask, Qmap in zip(Mask_FilenameList, Qmap_FilenameList, strict=False):
-        Qvalues_nonOverlapping += (
-            ni.load(mask).get_fdata() * ni.load(Qmap).get_fdata()
-        ) * np.logical_not(overlap_mask)
-    return Qvalues_nonOverlapping
-
-
-def fill_Qvalues_Overlapping(CM_FilenameList, Qmap_FilenameList, overlap_mask):
-    Qvalues_Overlapping = np.zeros(ni.load(CM_FilenameList[0]).shape)
-    for i in range(len(CM_FilenameList) - 1):
-        weight_2 = create_weight(CM_FilenameList[i], CM_FilenameList[i + 1])
-        weight_1 = 1 - weight_2
-        Qvalues_Overlapping += (
-            weight_1 * ni.load(Qmap_FilenameList[i]).get_fdata()
-            + weight_2 * ni.load(Qmap_FilenameList[i + 1]).get_fdata()
-        ) * overlap_mask
-    return Qvalues_Overlapping
-
-
-def fill_Qvalues_Overlapping2(
-    CM_FilenameList, Qmap_FilenameList, Mask_FilenameList, overlap_mask, i
-):
-    Qvalues_Overlapping = np.zeros(ni.load(CM_FilenameList[0]).shape)
-    mask_weight_filename = Mask_FilenameList[i + 1].split(".")[0] + "_weight.nii.gz"
-    meta_mask_weight = ni.load(mask_weight_filename)
-    arr_mask_weight = meta_mask_weight.get_fdata()
-    mask_weight_filename_i = Mask_FilenameList[i].split(".")[0] + "_weight.nii.gz"
-    meta_mask_weight_i = ni.load(mask_weight_filename_i)
-    arr_mask_weight_i = meta_mask_weight_i.get_fdata()
-
-    weight_2 = (
-        create_weight(CM_FilenameList[i], CM_FilenameList[i + 1]) * arr_mask_weight
-    )
-    weight_1 = (1 - weight_2) * arr_mask_weight_i
-    weight_2 = 1 - weight_1
-    Qvalues_Overlapping += (
-        weight_1 * ni.load(Qmap_FilenameList[i]).get_fdata()
-        + weight_2 * ni.load(Qmap_FilenameList[i + 1]).get_fdata()
-    ) * overlap_mask
-    return Qvalues_Overlapping
-
-
 def load_geometric_penalty(filename_list: list[str], indice: int) -> np.ndarray:
     fov = Path(filename_list[indice]).name.split("_")[1]
-    meta = ni.load(f"{fov}_geometric_penalty.nii.gz")
+    parent = Path(filename_list[indice]).parent
+    meta = ni.load(parent / f"{fov}_geometric_penalty.nii.gz")
     return meta.get_fdata()
 
 
@@ -391,103 +274,34 @@ def load_mask_from_geometric_penalty(
     filename_list: list[str], indice: int
 ) -> np.ndarray:
     fov = Path(filename_list[indice]).name.split("_")[1]
-    meta = ni.load(f"{fov}_geometric_penalty.nii.gz")
+    parent = Path(filename_list[indice]).parent
+    meta = ni.load(parent / f"{fov}_geometric_penalty.nii.gz")
     arr = meta.get_fdata()
     arr = np.where(arr < 0.001, 0, 1)
     return arr
 
 
-def reconstruction(
+def fill_Qvalues_Overlapping_relaxometry(
     cm_filenames_list: list[str],
     qmap_filenames_list: list[str],
     mask_filenames_list: list[str],
-    modality_in_DMAP_VALUES: bool,
+    overlap_mask: np.ndarray,
+    i: int,
 ) -> np.ndarray:
-    res = (
-        load_mask_from_geometric_penalty(mask_filenames_list, indice=0)
-        * ni.load(qmap_filenames_list[0]).get_fdata()
+    Qvalues_Overlapping = np.zeros(ni.load(cm_filenames_list[0]).shape)
+    arr_mask_weight = load_geometric_penalty(mask_filenames_list, indice=i + 1)
+    arr_mask_weight_i = load_geometric_penalty(mask_filenames_list, indice=i)
+
+    weight_2 = (
+        create_weight(cm_filenames_list[i], cm_filenames_list[i + 1]) * arr_mask_weight
     )
-    for i in range(len(qmap_filenames_list) - 1):
-        arr_mask = load_mask_from_geometric_penalty(mask_filenames_list, indice=i + 1)
-        arr_mask_i = load_geometric_penalty(mask_filenames_list, indice=i)
-
-        if i == 0:
-            overlap_mask = arr_mask * arr_mask_i
-            res = (
-                (arr_mask * ni.load(qmap_filenames_list[i + 1]).get_fdata()) + res
-            ) * np.logical_not(overlap_mask)
-        else:
-            arr_mask_previous = load_mask_from_geometric_penalty(
-                mask_filenames_list, indice=i - 1
-            )
-            overlap_mask = (
-                arr_mask * arr_mask_i * np.int8(np.logical_not(arr_mask_previous))
-            )
-            res = (
-                (arr_mask * ni.load(qmap_filenames_list[i + 1]).get_fdata())
-                * np.logical_not(arr_mask * arr_mask_previous)
-                + res
-            ) * np.logical_not(overlap_mask)
-
-        if modality_in_DMAP_VALUES:
-            res += np.nan_to_num(
-                fill_Qvalues_Overlapping_OnlySpatialRegularization(
-                    qmap_filenames_list, mask_filenames_list, overlap_mask, i
-                )
-            )
-        else:
-            res += np.nan_to_num(
-                fill_Qvalues_Overlapping2(
-                    cm_filenames_list,
-                    qmap_filenames_list,
-                    mask_filenames_list,
-                    overlap_mask,
-                    i,
-                )
-            )
-    return res
-
-
-def reconstruction_relaxometry(
-    cm_filenames_list: list[str],
-    qmap_filenames_list: list[str],
-    mask_filenames_list: list[str],
-) -> np.ndarray:
-    res = (
-        load_mask_from_geometric_penalty(mask_filenames_list, indice=0)
-        * ni.load(qmap_filenames_list[0]).get_fdata()
-    )
-    for i in range(len(cm_filenames_list) - 1):
-        arr_mask = load_mask_from_geometric_penalty(mask_filenames_list, indice=i + 1)
-        arr_mask_i = load_geometric_penalty(mask_filenames_list, indice=i)
-
-        if i == 0:
-            overlap_mask = arr_mask * arr_mask_i
-            res = (
-                (arr_mask * ni.load(qmap_filenames_list[i + 1]).get_fdata()) + res
-            ) * np.logical_not(overlap_mask)
-        else:
-            arr_mask_previous = load_mask_from_geometric_penalty(
-                mask_filenames_list, indice=i - 1
-            )
-            overlap_mask = (
-                arr_mask * arr_mask_i * np.int8(np.logical_not(arr_mask_previous))
-            )
-            res = (
-                (arr_mask * ni.load(qmap_filenames_list[i + 1]).get_fdata())
-                * np.logical_not(arr_mask * arr_mask_previous)
-                + res
-            ) * np.logical_not(overlap_mask)
-        res += np.nan_to_num(
-            fill_Qvalues_Overlapping2(
-                cm_filenames_list,
-                qmap_filenames_list,
-                mask_filenames_list,
-                overlap_mask,
-                i,
-            )
-        )
-    return res
+    weight_1 = (1 - weight_2) * arr_mask_weight_i
+    weight_2 = 1 - weight_1
+    Qvalues_Overlapping += (
+        weight_1 * ni.load(qmap_filenames_list[i]).get_fdata()
+        + weight_2 * ni.load(qmap_filenames_list[i + 1]).get_fdata()
+    ) * overlap_mask
+    return Qvalues_Overlapping
 
 
 def fill_Qvalues_Overlapping_OnlySpatialRegularization(
@@ -518,12 +332,16 @@ def fill_Qvalues_Overlapping_OnlySpatialRegularization(
     return Qvalues_Overlapping
 
 
-def reconstruction_OnlySpatialRegularization(
+def reconstruction(
+    cm_filenames_list: list[str],
     qmap_filenames_list: list[str],
     mask_filenames_list: list[str],
+    modality_in_DMAP_VALUES: bool,
 ) -> np.ndarray:
-    arr_mask = load_mask_from_geometric_penalty(mask_filenames_list, indice=0)
-    res = arr_mask * ni.load(qmap_filenames_list[0]).get_fdata()
+    res = (
+        load_mask_from_geometric_penalty(mask_filenames_list, indice=0)
+        * ni.load(qmap_filenames_list[0]).get_fdata()
+    )
     for i in range(len(qmap_filenames_list) - 1):
         arr_mask = load_mask_from_geometric_penalty(mask_filenames_list, indice=i + 1)
         arr_mask_i = load_mask_from_geometric_penalty(mask_filenames_list, indice=i)
@@ -539,18 +357,29 @@ def reconstruction_OnlySpatialRegularization(
             )
             overlap_mask = (
                 arr_mask * arr_mask_i * np.int8(np.logical_not(arr_mask_previous))
-            )  # case where mask[0] overlap with mask[1] and mask[2]
+            )
             res = (
                 (arr_mask * ni.load(qmap_filenames_list[i + 1]).get_fdata())
                 * np.logical_not(arr_mask * arr_mask_previous)
                 + res
             ) * np.logical_not(overlap_mask)
 
-        res += np.nan_to_num(
-            fill_Qvalues_Overlapping_OnlySpatialRegularization(
-                qmap_filenames_list, mask_filenames_list, overlap_mask, i
+        if modality_in_DMAP_VALUES:
+            res += np.nan_to_num(
+                fill_Qvalues_Overlapping_OnlySpatialRegularization(
+                    qmap_filenames_list, mask_filenames_list, overlap_mask, i
+                )
             )
-        )
+        else:
+            res += np.nan_to_num(
+                fill_Qvalues_Overlapping_relaxometry(
+                    cm_filenames_list,
+                    qmap_filenames_list,
+                    mask_filenames_list,
+                    overlap_mask,
+                    i,
+                )
+            )
     return res
 
 
@@ -562,11 +391,11 @@ def merge_QMRI_FOVs(
     mask_filename_list = fovs_filenames_to_merge_dict["mask"]
     qmap_filename_list = fovs_filenames_to_merge_dict[modality_to_merge]
 
-    is_in_DMAP_VALUES = modality_to_merge not in DMAP_VALUES
+    is_in_DMAP_VALUES = modality_to_merge in DMAP_VALUES
 
     if not (is_in_DMAP_VALUES):
         confidence_map_filename_list = fovs_filenames_to_merge_dict[
-            CM_QMAP[QMAP_VALUES.index(modality_to_merge)]
+            f"CM_{modality_to_merge[1:]}"
         ]
     else:
         confidence_map_filename_list = []
@@ -587,7 +416,7 @@ def merge_QMRI_blocks(
     blocks_path: str | Path, modality: str, nbrBlocks: int
 ) -> ni.Nifti1Image:
     for i in range(nbrBlocks):
-        block_filename = blocks_path / f"bloc_str(i + 1)_{modality}.nii.gz"
+        block_filename = blocks_path / f"block_{str(i + 1)}_{modality}.nii.gz"
         if i < 1:
             meta_first_block = ni.load(block_filename)
             res = meta_first_block.get_fdata()
@@ -597,9 +426,9 @@ def merge_QMRI_blocks(
 
 
 def fovs_to_be_merged_are_specified(
-    fov_material_filename: str | Path, modality: str
+    fov_material_filename: dict[str, list[str]], modality: str
 ) -> bool:
-    return len(fov_material_filename[modality]) > 0
+    return len(fov_material_filename.get(modality, [])) > 0
 
 
 def run_Fusion_QMRI(working_directory: str | Path, nbr_of_blocks: int) -> None:
@@ -607,7 +436,7 @@ def run_Fusion_QMRI(working_directory: str | Path, nbr_of_blocks: int) -> None:
     blocks_path.mkdir(parents=False, exist_ok=True)
 
     whole_hemisphere_path = Path(working_directory) / "04-Reconstruction"
-    whole_hemisphere_path.mkdir(parents=False, exists_ok=True)
+    whole_hemisphere_path.mkdir(parents=False, exist_ok=True)
 
     for modality in QMAP_VALUES:
         for i in range(nbr_of_blocks):
@@ -679,7 +508,15 @@ def parse_command_line(argv):
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Merge Field of views in the final space.",
+        description="Reconstruction Script: Merge Fields of View (FOVs) into Final Space.\n\n"
+        "Usage Modes:\n"
+        "  - Default (no --run): prepares materials in 02-RefSpace\n"
+        "  - With --run and -n: merges preprocessed blocks into final space\n\n"
+        "Required Files:\n"
+        "  - 01-InitSpace with modality_{FOV}.nii.gz files\n"
+        "  - SendToRefSpace_{modality}.json files for each modality\n"
+        "  - block_{i}.json files for each block to merge (if using --run)\n"
+        "Please refer to the README.md file in the github for more details.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -692,6 +529,7 @@ def parse_command_line(argv):
         "-n",
         "--nbrBlocks",
         required=False,
+        type=int,
         help="Number of blocks to be merged",
     )
     parser.add_argument(
