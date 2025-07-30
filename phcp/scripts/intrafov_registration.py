@@ -44,16 +44,18 @@ def apply_n4_bias_correction_to_all_nifti_files(
     moving_directory, fixed_directory, verbose: bool
 ) -> None:
     """Apply N4 bias field correction to all NIFTI files in moving and fixed directories."""
-    moving_files = list(moving_directory.glob("*.nii")) + list(
-        moving_directory.glob("*.nii.gz")
-    )
-    fixed_files = list(fixed_directory.glob("*.nii")) + list(
-        fixed_directory.glob("*.nii.gz")
+    all_nifti_files_in_moving_and_fixed = itertools.chain(
+        moving_directory.glob("*.nii"),
+        moving_directory.glob("*.nii.gz"),
+        fixed_directory.glob("*.nii"),
+        fixed_directory.glob("*.nii.gz"),
     )
 
-    for nifti_file in moving_files + fixed_files:
-        if not nifti_file.name.endswith("_N4.nii") and not nifti_file.name.endswith(
-            "_N4.nii.gz"
+    for nifti_file in all_nifti_files_in_moving_and_fixed:
+        if (
+            not nifti_file.name.endswith("_N4.nii")
+            and not nifti_file.name.endswith("_N4.nii.gz")
+            and not Path(nifti_file.as_posix().split(".")[0] + "_N4.nii.gz").exists()
         ):
             verbose and logger.info(
                 f"Applying N4 bias field correction to {nifti_file.name}..."
