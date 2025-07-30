@@ -278,7 +278,7 @@ def create_deformation_field(Filename: str | Path, OutputDirectory: str | Path) 
 
     ni_im = ni.Nifti1Image(res, metax.affine, metax.header)
     ni_im = change_header_to_deformation_fieldheader(ni_im)
-    ni.save(ni_im, Path(OutputDirectory) / "Deformation_field_SyN.nii.gz")
+    ni.save(ni_im, Path(OutputDirectory) / "total_deformation_field.nii.gz")
 
 
 """ Create Jacobian files """
@@ -288,21 +288,21 @@ def create_jacobian_files(Filename: str | Path, OutputDirectory: str | Path) -> 
     ants_ref = ants.image_read(Filename)
     jacobian = ants.create_jacobian_determinant_image(
         ants_ref,
-        Path(OutputDirectory) / "Deformation_field_SyN.nii.gz",
+        Path(OutputDirectory) / "total_deformation_field.nii.gz",
         do_log=False,
     )
     ants.image_write(
         jacobian,
-        (Path(OutputDirectory) / "Jacobian_Deformation_field_SyN.nii.gz").as_posix(),
+        (Path(OutputDirectory) / "jacobian_deformation_field.nii.gz").as_posix(),
     )
     jacobian = ants.create_jacobian_determinant_image(
         ants_ref,
-        Path(OutputDirectory) / "Deformation_field_SyN.nii.gz",
+        Path(OutputDirectory) / "total_deformation_field.nii.gz",
         do_log=True,
     )
     ants.image_write(
         jacobian,
-        (Path(OutputDirectory) / "JacobianLog_Deformation_field_SyN.nii.gz").as_posix(),
+        (Path(OutputDirectory) / "jacobianLog_deformation_field.nii.gz").as_posix(),
     )
 
 
@@ -394,7 +394,7 @@ def compose_transformations(
         T_center @ res @ T_neg_center
     )  # Including the center of rotation in the affine matrix -> implies that the center of rotation is zero
 
-    OutputFilename = Path(OutputDirectory) / "TotalAffineTransform.txt"
+    OutputFilename = Path(OutputDirectory) / "total_affine_transform.txt"
     write_total_affine_transform_txtformat(OutputFilename, res)
 
 
@@ -409,7 +409,7 @@ def regularize_laplacian_smoothing(
 
 def apply_laplacian_smoothing(OutputDirectory: str | Path) -> None:
     meta_deformationField = ni.load(
-        Path(OutputDirectory) / "Deformation_field_SyN.nii.gz"
+        Path(OutputDirectory) / "total_deformation_field.nii.gz"
     )
     arr_deformationField = meta_deformationField.get_fdata()
 
@@ -457,7 +457,7 @@ def apply_laplacian_smoothing(OutputDirectory: str | Path) -> None:
         meta_deformationField.affine,
         meta_deformationField.header,
     )
-    ni.save(ni_im, Path(OutputDirectory) / "Deformation_field_SyN_Smoothed.nii.gz")
+    ni.save(ni_im, Path(OutputDirectory) / "total_deformation_field_smoothed.nii.gz")
 
 
 def concat_transforms(InputFilename, JsonFilename, OutputDirectory):
@@ -500,14 +500,14 @@ def parse_command_line(argv):
     parser = argparse.ArgumentParser(
         description="Concatenates linear and non-linear transformations in ANTS format. \n"
         "This script creates the following main files in the output directory :\n"
-        "    + Deformation_field_SyN.nii.gz, Concatenated raw non-linear transformations ;\n"
-        "    + Deformation_field_SyN_Smoothed.nii.gz, SyN_deformation_field smoothed with Laplacian model (can be used in future scripts) ;\n"
-        "    + Jacobian_Deformation_field_SyN.nii.gz, Jacobian determinant of Deformation_field_SyN.nii.gz ;\n"
-        "    + JacobianLog_Deformation_field_SyN.nii.gz, log of Jacobian_Deformation_field_SyN.nii.gz;\n"
-        "    + TotalAffineTransform.txt, Concatenated linear transformations.\n \n"
-        "USAGE : \n    Transformation files should be applied in the following order : \n"
-        "        1. Deformation_field_SyN.nii.gz or Deformation_field_SyN_Smoothed.nii.gz \n"
-        "        2. TotalAffineTransform.txt.",
+        "    + total_deformation_field.nii.gz, Concatenated raw non-linear transformations ;\n"
+        "    + total_deformation_field_smoothed.nii.gz, total_deformation_field smoothed with Laplacian model (can be used in future scripts) ;\n"
+        "    + jacobian_deformation_field.nii.gz, Jacobian determinant of total_deformation_field.nii.gz ;\n"
+        "    + jacobianLog_deformation_field.nii.gz, log of jacobian_deformation_field.nii.gz;\n"
+        "    + total_affine_transform.txt, Concatenated linear transformations.\n \n"
+        "USAGE : \n    Total transformation files should be applied in the following order : \n"
+        "        1. total_deformation_field.nii.gz or total_deformation_field_smoothed.nii.gz \n"
+        "        2. total_affine_transform.txt.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -525,7 +525,8 @@ def parse_command_line(argv):
         "initial space to the final space. The json filename should followed "
         "the following architecture {  'tparams':  ["
         "transform_file_1_path, transform_file_2_path, ...,"
-        " transform_file_n_path]   }",
+        " transform_file_n_path]   }. Transformation file names must be sorted "
+        "in order of application, from first to last..",
     )
     parser.add_argument(
         "-o",

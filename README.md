@@ -501,7 +501,7 @@ python reconstruct.py -p fov/derivatives/Registration/sub-{subjectID}/fusion/ --
 
 #### Stage 1: Prepare Materials (Default, without `--run`)
 
-This stage generates all necessary materials for reconstruction in the final space, including:
+This stage generates all necessary materials for reconstruction in the final space from T2star modality in the initial space, including:
 
 - Geometric penalty maps
 - Each modality transformed into the final space
@@ -523,7 +523,7 @@ fov/derivatives/Registration
 
 ##### 1. `01-InitSpace/` folder
 
-Must contain your original FOV data files, for example:
+Must contain your FOV data in the initial space files, for example:
 
 ```
 T2star_InfPos.nii.gz
@@ -533,6 +533,7 @@ T2star_InfMid.nii.gz
 
 - File naming format: `{modality}_{FOV}.nii.gz`, where `{modality}` in [ `QT1`, `QT2`, `QT2star`, `ADC1500`, `ADC4500`, `ADC8000`, `FA1500`, `FA4500`, `FA8000`, `TransDiff1500`, `TransDiff4500`, `TransDiff8000`,  `ParaDiff1500`, `ParaDiff4500`, `ParaDiff8000`, `GFA1500`, `GFA4500`, `GFA8000`, `T2w`] and `{FOV}` can be any custom label (e.g., `InfPos`, `InfMid`, etc.)
 - Supported formats: **GIS** or **NIfTI**
+- **Must contain at least T2star modality**
 
 ##### 2. `SendToRefSpace_{modality}.json` files
 
@@ -603,6 +604,45 @@ Each file should follow this structure:
 - Reverse order (e.g., `InfAnt` > `InfMid` > `InfPos`) is also valid, as long as the sequence is consistent.
 - Do **not skip any FOVs**.
 
+
+### Optional Script: `concat_transforms.py`
+The `concat_transforms.py` script concatenates a series of linear and non-linear transformations applied to a single field of view (FOV), producing two key output files:
+- `total_affine_transform.txt`
+- `total_deformation_field.nii.gz`
+
+#### Example
+```bash
+python concat_transforms.py
+	--input 'sub-{sub}_ses-{ses}_T2w.nii.gz'
+	--json  'transform_filenames_sorted.json'
+	--output /output_directory_path/
+```
+
+#### Required Inputs
+- `sub-{sub}_ses-{ses}_T2w.nii.gz` defines the **initial (native) space**. The output `total_deformation_field.nii.gz` space will be the same.
+- `transform_filenames_sorted.json` lists the successive transformation files, sorted in the order they should be applied (from first to last). The file should follow this structure:
+```json
+	{
+	  "tparams": ["First_transform_filename(.txt or .nii.gz),
+	  	      "Second_transform_filename(.txt or .nii.gz),
+	  	      ...,
+	  	      Last_transform_filename(.txt or .nii.gz) "]
+	}
+```
+
+
+#### Output Files and Usage
+The script generates the following **main outputs**:
+1. `total_deformation_field.nii.gz` -- A non-linear deformation field in ANTs format, usable directly with `antsApplyTransforms`.
+2. `total_affine_transform.txt` -- A text file representing the combined affine transformation.
+
+To apply the transformations correctly using `antsApplyTransforms`, use the following order:
+1. `total_deformation_field.nii.gz`
+2. `total_affine_transform.txt`
+
+#### Additional Files
+- **Secondary files** (not discussed in this repository but included for reference): `jacobian_deformation_field.nii.gz`, `jacobianLog_deformation_field.nii.gz`, `total_deformation_field_smoothed.nii.gz`
+- **Tertiary files**: Intermediate files generated during processing; not required for downstream analysis.
 
 ## Data publication
 

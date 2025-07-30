@@ -155,7 +155,7 @@ def create_geometric_penalty_from_fov_mapping(
     meta = ni.load(mask_fov_in_respace_filename)
     arr = meta.get_fdata()
     newarr = nd.distance_transform_edt(arr, meta.header["pixdim"][1])
-    newarr = sigmoid(newarr, 1.5, 9)
+    newarr = sigmoid(newarr, 2.5, 5)
     ni.save(ni.Nifti1Image(newarr, meta.affine, meta.header), geo_penalty_filename)
 
 
@@ -166,7 +166,7 @@ def run_FOV_mapping_and_geometric_penaty_creation(
     working_path: str | Path,
 ) -> None:
     logger.info("========= Creating binary FOV masks =========")
-    # This algortihsm is based on the t2star map
+    # This algorithm is based on the t2star map
     for fov in liste_fovs:
         logger.info(f"========= Process FOV : {fov} =========")
         output_mask_nifti_filename_initspace = init_space_path / "".join(
