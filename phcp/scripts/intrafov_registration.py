@@ -1,105 +1,101 @@
 #!/usr/bin/env python3
-"""
-Created on Fri Aug  4 15:53:57 2023
-
-@author: la272118
-
-Objective: Registration of all modalities through sessions of acquisitions.
-"""
-
 import glob
-import optparse
+import itertools
+import logging
 import os
+import sys
+from pathlib import Path
 
 import ants
 import numpy as np
 
-# from multiprocessing import Process
+import phcp.gkg as gkg
+
+logger = logging.getLogger(__name__)
 
 
-def ConversionGisToNifti(InputGisFilename, OutputNiftiFilename):
-    os.system(
-        "singularity exec --bind /neurospin:/neurospin:rw "
-        " /directory/2022-12-20_gkg.sif "
-        "GkgExecuteCommand Gis2NiftiConverter -i "
-        + InputGisFilename
-        + " -o "
-        + OutputNiftiFilename
-        + " -verbose"
+def convert_all_gis_files_to_nifti(
+    moving_directory, fixed_directory, verbose: bool
+) -> None:
+    """Convert GIS files to NIFTI format."""
+    GIS_file_to_convert_iterator = itertools.chain(
+        moving_directory.glob("*.ima"), fixed_directory.glob("*.ima")
     )
 
+    for gis_path in GIS_file_to_convert_iterator:
+        nii_path = gis_path.with_suffix(".nii")
+        niigz_path = gis_path.with_suffix(".nii.gz")
 
-def Data_formating(MainDirectory, verbose):
-    MaterialsDirectory = os.path.join(MainDirectory, "01-Materials")
+        if not nii_path.exists() and not niigz_path.exists():
+            verbose and logger.info(f"Converting {gis_path.name} to NIFTI format...")
 
-    Path_MovingFile = os.path.join(MaterialsDirectory, "Moving")
-    Path_FixedFile = os.path.join(MaterialsDirectory, "Fixed")
+            gkg.gkg_convert_gis_to_nifti(
+                gis_path.as_posix(),
+                gis_path.with_suffix(".nii.gz").as_posix(),
+                verbose=verbose,
+            )
 
-    FileToConvert = glob.glob(os.path.join(Path_MovingFile, "*.ima")) + glob.glob(
-        os.path.join(Path_FixedFile, "*.ima")
+            verbose and logger.info(f"Conversion of {gis_path.name} completed.")
+        else:
+            verbose and logger.info(f"{gis_path.name} already exists in NIFTI format.")
+
+
+def apply_n4_bias_correction_to_all_nifti_files(
+    moving_directory, fixed_directory, verbose: bool
+) -> None:
+    """Apply N4 bias field correction to all NIFTI files in moving and fixed directories."""
+    moving_files = list(moving_directory.glob("*.nii")) + list(
+        moving_directory.glob("*.nii.gz")
+    )
+    fixed_files = list(fixed_directory.glob("*.nii")) + list(
+        fixed_directory.glob("*.nii.gz")
     )
 
-    if verbose:
-        print("======================================================")
-        print("DATA FORMATING, GIS TO NIFTI CONVERSION PART ")
-        print("======================================================")
-
-    # GIS CONVERSION
-    for gisfile in FileToConvert:
-        if not os.path.exists(gisfile.split(".")[0] + ".nii") and not os.path.exists(
-            gisfile.split(".")[0] + ".nii.gz"
+    for nifti_file in moving_files + fixed_files:
+        if not nifti_file.name.endswith("_N4.nii") and not nifti_file.name.endswith(
+            "_N4.nii.gz"
         ):
-            if verbose:
-                print("======================================================")
-                print("    GIS TO NIFTI CONVERSION OF :" + gisfile.split("/")[-1])
-                print("======================================================")
-            ConversionGisToNifti(gisfile, gisfile.split(".")[0] + ".nii")
-            if verbose:
-                print("DONE")
-
-    if verbose:
-        print("======================================================")
-        print("GIS TO NIFTY CONVERSION PART: DONE")
-        print("======================================================")
-
-    # N4 BIAS FIELD CORRECTION
-    FileToN4 = (
-        glob.glob(os.path.join(Path_MovingFile, "*.nii"))
-        + glob.glob(os.path.join(Path_MovingFile, "*.nii.gz"))
-        + glob.glob(os.path.join(Path_FixedFile, "*.nii"))
-        + glob.glob(os.path.join(Path_FixedFile, "*.nii.gz"))
-    )
-
-    # print(FileToN4)
-    for Niftifile in FileToN4:
-        extension = ".nii.gz" if len(Niftifile.split(".")) > 2 else ".nii"
-
-        if (
-            not os.path.exists(Niftifile.split(".")[0] + "_N4.nii")
-            and not os.path.exists(Niftifile.split(".")[0] + "_N4.nii.gz")
-            and len(Niftifile.split("N4")) < 2
-        ):
-            if verbose:
-                print("======================================================")
-                print("    N4 BIAS CORRECTION FIELD :" + Niftifile.split("/")[-1])
-                print("======================================================")
-            ANTS_volume = ants.image_read(Niftifile)
-            ANTS_bias_field = ants.n4_bias_field_correction(
-                ANTS_volume,
+            verbose and logger.info(
+                f"Applying N4 bias field correction to {nifti_file.name}..."
+            )
+            ants_volume = ants.image_read(nifti_file.as_posix())
+            ants_bias_field = ants.n4_bias_field_correction(
+                ants_volume,
                 spline_param=20,
                 rescale_intensities=True,
                 return_bias_field=True,
             )
             ants.image_write(
-                ANTS_volume / ANTS_bias_field,
-                Niftifile.split(".")[0] + "_N4" + extension,
+                ants_volume / ants_bias_field,
+                (
+                    nifti_file.parent
+                    / (
+                        nifti_file.name.removesuffix(".nii.gz")
+                        if nifti_file.name.endswith(".nii.gz")
+                        else nifti_file.stem
+                    )
+                ).as_posix()
+                + "_N4.nii.gz",
             )
-            if verbose:
-                print("DONE")
-    if verbose:
-        print("======================================================")
-        print("DATA FORMATING: DONE")
-        print("======================================================")
+            verbose and logger.info("N4 bias field correction applied.")
+        else:
+            verbose and logger.info(
+                f"Skipping {nifti_file.name} as it already has N4 applied."
+            )
+
+
+def Data_formating(working_directory: str | Path, verbose: bool) -> None:
+    moving_folder = Path(working_directory) / "moving"
+    fixed_folder = Path(working_directory) / "fixed"
+
+    print(f"Moving folder: {moving_folder}")
+    verbose and logger.info("Starting data formatting and GIS to NIFTI conversion...")
+    convert_all_gis_files_to_nifti(moving_folder, fixed_folder, verbose)
+    verbose and logger.info("GIS to NIfTI conversion : done.")
+
+    verbose and logger.info("Applying N4 bias field correction to all NIFTI files...")
+    apply_n4_bias_correction_to_all_nifti_files(moving_folder, fixed_folder, verbose)
+    verbose and logger.info("N4 bias field correction : done.")
 
 
 def Registration_Type1(MainDirectory, verbose):
@@ -267,192 +263,42 @@ def Registration_Type1(MainDirectory, verbose):
             print("======================================================")
 
 
-def ApplyRegistrationOnRawdata(MainDirectory, verbose):
-    MaterialsDirectory = os.path.join(MainDirectory, "01-Materials")
-    RegistrationDirectory = os.path.join(MainDirectory, "02-Registration")
-    os.makedirs(RegistrationDirectory, exist_ok=True)
-    output = os.path.join(MainDirectory, "03-Result")
-    os.makedirs(output, exist_ok=True)
-
-    # PROPEDEUTIC TO APPLY REGISTRATION ALGORITHM
-
-    Path_fixedfile = (
-        glob.glob(os.path.join(MaterialsDirectory, "Fixed") + "/*N4.nii.gz")
-        + glob.glob(os.path.join(MaterialsDirectory, "Fixed") + "/*N4.nii")
-    )[0]
-
-    fixed = ants.image_read(Path_fixedfile)
-
-    verbose = bool(verbose)
-
-    if verbose:
-        print("======================================================")
-        print("APPLY REGISTRATION: ")
-        print("======================================================")
-
-    Path_movingfile = os.path.join(MaterialsDirectory, "Moving")
-    Path_fixedSessionfile = os.path.join(MaterialsDirectory, "Fixed")
-    Path_TransformFiles = os.path.join(RegistrationDirectory, "TransformFiles")
-
-    Filename_fixed = (
-        glob.glob(os.path.join(Path_fixedSessionfile, "*N4.nii"))
-        + glob.glob(os.path.join(Path_fixedSessionfile, "*N4.nii.gz"))
-    )[0]
-
-    ### ATTENTION MODIFICATION POUR APPLIQUER SUR IMAGES BRUTES
-    # Filenames_moving =  glob.glob(os.path.join(Path_movingfile, '*N4.nii')) +\
-    #     glob.glob(os.path.join(Path_movingfile, '*N4.nii.gz'))
-    Filenames_moving = glob.glob(os.path.join(Path_movingfile, "*.nii")) + glob.glob(
-        os.path.join(Path_movingfile, "*.nii.gz")
-    )
-    Filenames_moving_N4 = glob.glob(
-        os.path.join(Path_movingfile, "*N4.nii")
-    ) + glob.glob(os.path.join(Path_movingfile, "*N4.nii.gz"))
-
-    for name in Filenames_moving_N4:
-        Filenames_moving.remove(name)
-
-    Dict_Transforms = {}
-    Filename_Fixed = Filename_fixed.split("/")[-1].split(".")[0].split("_")[-2]
-
-    for file in Filenames_moving:
-        Filename_Moving = file.split("/")[-1].split(".")[0].split("_")[-1]
-
-        Path_WarpFilename = os.path.join(
-            Path_TransformFiles,
-            Filename_Moving + "To" + Filename_Fixed + "3Warp.nii.gz",
-        )
-        Path_AffineFilename = os.path.join(
-            Path_TransformFiles, Filename_Moving + "To" + Filename_Fixed + "2Affine.mat"
-        )
-        Path_RigidFilename = os.path.join(
-            Path_TransformFiles, Filename_Moving + "To" + Filename_Fixed + "1Rigid.mat"
-        )
-        Path_InitialFilename = os.path.join(
-            Path_TransformFiles,
-            Filename_Moving
-            + "To"
-            + Filename_Fixed
-            + "0DerivedInitialMovingTranslation.mat",
-        )
-
-        Path_WarpFilename_2 = os.path.join(
-            Path_TransformFiles,
-            Filename_Moving + "To" + Filename_Fixed + "1Warp.nii.gz",
-        )
-        Path_AffineFilename_2 = os.path.join(
-            Path_TransformFiles,
-            Filename_Moving + "To" + Filename_Fixed + "0GenericAffine.mat",
-        )
-        # ATTENTION deux varialbles presque pareil Path_TransformFiles et Path_transformfile
-
-        Dict_Transforms[file] = [
-            Path_WarpFilename,
-            Path_AffineFilename,
-            Path_RigidFilename,
-            Path_InitialFilename,
-        ]
-
-        if not (os.path.exists(Path_WarpFilename)) and not (
-            os.path.exists(Path_AffineFilename)
-        ):
-            Dict_Transforms[file] = [Path_WarpFilename_2, Path_AffineFilename_2]
-
-        if not os.path.exists(
-            os.path.join(
-                output, file.split("/")[-1].split(".")[0] + "_Registration.nii.gz"
-            )
-        ):
-            if verbose:
-                print("======================================================")
-                print("    APPLY REGISTRATION, File: " + file.split("/")[-1])
-                print("======================================================")
-            Moving = ants.image_read(file)
-            apply = ants.apply_transforms(
-                fixed,
-                Moving,
-                Dict_Transforms[file],
-                "lanczosWindowedSinc",
-                imagetype=0,
-                verbose=True,
-            )
-
-            if verbose:
-                print("======================================================")
-                print("    APPLY REGISTRATION DONE")
-                print("======================================================")
-            output_filename = os.path.join(
-                output, file.split("/")[-1].split(".")[0] + "_Registration.nii.gz"
-            )
-            ants.image_write(apply, output_filename)
-        else:
-            if verbose:
-                print("======================================================")
-                print(
-                    "    APPLY REGISTRATION ALREADY EXIST, File: " + file.split("/")[-1]
-                )
-                print("======================================================")
-
-    if verbose:
-        print("======================================================")
-        print("APPLY REGISTRATION: DONE")
-        print("======================================================")
-
-
-def runmain(MainDirectory, verbose):
+def run_pipeline(MainDirectory, verbose):
     Data_formating(MainDirectory, verbose)
-    Registration_Type1(MainDirectory, verbose)
-    # ApplyRegistrationOnRawdata(MainDirectory, verbose)
+    # Registration_Type1(MainDirectory, verbose)
 
 
-parser = optparse.OptionParser()
-parser.add_option("-i", "--input", dest="MainDirectory", help="01-/02-/... directory")
-parser.add_option(
-    "-v",
-    "--verbose",
-    type="int",
-    dest="verbose",
-    default=True,
-    help="1 --> True, 0 --> False. 1 by Default.",
-)
+def parse_command_line(argv):
+    """Parse the script's command line."""
+    import argparse
 
-(options, args) = parser.parse_args()
+    parser = argparse.ArgumentParser(
+        description="Intrafov registration script for PHCP data."
+    )
+    parser.add_argument(
+        "-i",
+        "--workingDirectory",
+        required=True,
+        help="Working directory such as DirectoryName/01-Materials   /02-..   /03-..",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        required=False,
+        default=False,
+        help="do not print detailed",
+    )
+
+    args = parser.parse_args()
+    return args
 
 
-################################################################################
-# 1) Value Extractor
-################################################################################
+def main(argv=sys.argv):
+    """The script's entry point."""
+    logging.basicConfig(level=logging.INFO)
+    args = parse_command_line(argv)
+    return run_pipeline(args.workingDirectory, args.verbose) or 0
 
-runmain(options.MainDirectory, options.verbose)
 
-
-# os.system("antsRegistration "+\
-#             f"-d {3} "+\
-#             f"-r [{Path_FixedFilename}, {file}, 1] "+\
-#             "-n LanczosWindowedSinc "+\
-#                 #
-#             f"-m MI[{Path_FixedFilename},{file},{1},{8}, Regular, {0.5}] " +\
-#             f"-t Rigid[{2}] "+\
-#             f"-c [{500}x{500}x{500},{1e-6},{8}] "+\
-#             f"-s {4}x{2}x{1}vox "+\
-#             f"-f {4}x{2}x{2} "+\
-#                 #
-#             f"-m MI[{Path_FixedFilename},{file},{1},{16}, Regular, {0.8}] " +\
-#             f"-t Affine[{1}] "+\
-#             f"-c [{500}x{500}x{500},{1e-6},{8}] "+\
-#             f"-s {4}x{2}x{1}vox "+\
-#             f"-f {4}x{2}x{2} "+\
-#                 #
-#             f"-m mattes[{Path_FixedFilename},{file},{1},{32}, Regular, {0.8}] " +\
-#             f"-t SyN[{0.5}] "+\
-#             f"-c [{1200}x{1200}x{1000},{1e-6},{8}] "+\
-#             f"-s {4}x{2}x{1}vox "+\
-#             f"-f {4}x{2}x{2} "+\
-#                 #
-#             "-u 0 "+\
-#             "-z 0 "+\
-#             f"-o [{out},{out}_Regis.nii.gz,{out}INV_Regis.nii.gz] "+\
-#             " -x [NA,NA] "+\
-#             "--float 1 "+\
-#             "--write-composite-transform 0 "+\
-#             "-v 1")
+if __name__ == "__main__":
+    sys.exit(main())
