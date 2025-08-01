@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-import glob
 import itertools
 import logging
 import os
+import subprocess
 import sys
 from pathlib import Path
 
 import ants
-import numpy as np
 
 import phcp.gkg as gkg
 
@@ -86,188 +85,135 @@ def apply_n4_bias_correction_to_all_nifti_files(
             )
 
 
-def Data_formating(working_directory: str | Path, verbose: bool) -> None:
+def log_registration_info(moving_filename: str, fixed_filename: str) -> None:
+    logger.info(
+        "\n"
+        "======================================================\n"
+        "    Rigid / Affine / SyN personalized REGISTRATION :\n"
+        f"        --> Moving file : {moving_filename}\n"
+        f"        --> Fixed file : {fixed_filename}\n"
+        "======================================================"
+    )
+
+
+def run_ants_registration(
+    ref_filename: str, moving_filename: str, out_prefix: str
+) -> None:
+    """Run ANTs registration command."""
+    ants_command = [
+        "antsRegistration",
+        "-d",
+        "3",
+        "-r",
+        f"[{ref_filename},{moving_filename},1]",
+        "-m",
+        f"MI[{ref_filename},{moving_filename},1,8,Regular,0.5]",
+        "-t",
+        "Rigid[2]",
+        "-c",
+        "[500x500x500,1e-6,8]",
+        "-s",
+        "4x2x1vox",
+        "-f",
+        "4x2x2",
+        "-m",
+        f"MI[{ref_filename},{moving_filename},1,16,Regular,0.8]",
+        "-t",
+        "Affine[1]",
+        "-c",
+        "[500x500x500,1e-6,8]",
+        "-s",
+        "4x2x1vox",
+        "-f",
+        "4x2x2",
+        "-m",
+        f"mattes[{ref_filename},{moving_filename},1,32,Regular,0.8]",
+        "-t",
+        "SyN[0.5,3,1]",
+        "-c",
+        "[1200x1200x1000,1e-6,8]",
+        "-s",
+        "4x2x1vox",
+        "-f",
+        "4x2x2",
+        "-o",
+        f"[{out_prefix},{out_prefix}Regis.nii.gz,{out_prefix}INV_Regis.nii.gz]",
+        "-v",
+        "1",
+    ]
+    subprocess.run(ants_command, check=True)
+
+
+def compute_and_save_jacobian(
+    fixed_image: ants.ANTsImage, warp_filename: str, output_filename: str
+) -> None:
+    """Compute and save the Jacobian determinant image."""
+    jacobian_image = ants.create_jacobian_determinant_image(
+        fixed_image, warp_filename, do_log=False
+    )
+    ants.image_write(jacobian_image, output_filename)
+
+
+def run_registrations_intrafov(working_directory: str | Path, verbose: bool) -> None:
     moving_folder = Path(working_directory) / "moving"
     fixed_folder = Path(working_directory) / "fixed"
 
-    print(f"Moving folder: {moving_folder}")
-    verbose and logger.info("Starting data formatting and GIS to NIFTI conversion...")
-    convert_all_gis_files_to_nifti(moving_folder, fixed_folder, verbose)
-    verbose and logger.info("GIS to NIfTI conversion : done.")
-
-    verbose and logger.info("Applying N4 bias field correction to all NIFTI files...")
-    apply_n4_bias_correction_to_all_nifti_files(moving_folder, fixed_folder, verbose)
-    verbose and logger.info("N4 bias field correction : done.")
-
-
-def Registration_Type1(MainDirectory, verbose):
-    MaterialsDirectory = os.path.join(MainDirectory, "01-Materials")
-    RegistrationDirectory = os.path.join(MainDirectory, "02-Registration")
-    verbose = bool(verbose)
-
-    with open(RegistrationDirectory + "/Jacobian_resume.txt", "a") as f:
-        Jacobian_textfile = f.readlines()
-
-    if verbose:
-        print("======================================================")
-        print("REGISTRATION Type 1: ")
-        print("======================================================")
+    logger.info("Starting registration part...")
 
     # FIXED VOLUME INITIALIZATION
-    Path_FixedFilename = (
-        glob.glob(os.path.join(MaterialsDirectory, "Fixed") + "/*N4.nii.gz")
-        + glob.glob(os.path.join(MaterialsDirectory, "Fixed") + "/*N4.nii")
-    )[0]
-
-    Path_MovingFile = os.path.join(MaterialsDirectory, "Moving")
-
-    FileToRegis = glob.glob(os.path.join(Path_MovingFile, "*N4.nii")) + glob.glob(
-        os.path.join(Path_MovingFile, "*N4.nii.gz")
-    )
-
-    os.makedirs(os.path.join(RegistrationDirectory, "TransformFiles"), exist_ok=True)
-
-    Filename_Fixed = Path_FixedFilename.split("/")[-1].split(".")[0].split("_")[-2]
-
-    Path_TransformFiles = os.path.join(RegistrationDirectory, "TransformFiles")
-
-    Fixed = ants.image_read(Path_FixedFilename)
-
+    t2w_recN4_filename = list(fixed_folder.glob("*N4.nii.gz"))[0].as_posix()
+    all_moving_filename = moving_folder.glob("*N4.nii.gz")
+    transform_files_folder = Path(working_directory) / "transform_files"
+    transform_files_folder.mkdir(exist_ok=True)
     # REGISTRATION PART
-    for file in FileToRegis:
-        Filename_Moving = file.split("/")[-1].split(".")[0].split("_")[-2]
+    for file in all_moving_filename:
+        name_moving_image = file.name.split(".")[0].split("_")[0]
 
-        Path_WarpFilename = os.path.join(
-            Path_TransformFiles,
-            Filename_Moving + "To" + Filename_Fixed + "3Warp.nii.gz",
-        )
-        Path_AffineFilename = os.path.join(
-            Path_TransformFiles, Filename_Moving + "To" + Filename_Fixed + "2Affine.mat"
+        warp_filename = transform_files_folder / f"{name_moving_image}_To_T2w_1Warp.mat"
+        affine_filename = (
+            transform_files_folder / f"{name_moving_image}_To_T2w_0GenericAffine.mat"
         )
 
-        Path_WarpFilename_2 = os.path.join(
-            Path_TransformFiles,
-            Filename_Moving + "To" + Filename_Fixed + "1Warp.nii.gz",
-        )
-        Path_AffineFilename_2 = os.path.join(
-            Path_TransformFiles,
-            Filename_Moving + "To" + Filename_Fixed + "0GenericAffine.mat",
-        )
-
-        if (
-            not (os.path.exists(Path_WarpFilename))
-            and not (os.path.exists(Path_AffineFilename))
-        ) and (
-            not (os.path.exists(Path_WarpFilename_2))
-            and not (os.path.exists(Path_AffineFilename_2))
+        if not (os.path.exists(warp_filename)) and not (
+            os.path.exists(affine_filename)
         ):
-            if verbose:
-                print("======================================================")
-                print("    Rigid / Affine / SyN personalized REGISTRATION :")
-                print("        --> Moving file : " + file.split("/")[-1])
-                print("        --> Fixed file : " + Path_FixedFilename.split("/")[-1])
-                print("======================================================")
-
-            # grad = 0.25
-            out = os.path.join(
-                Path_TransformFiles, Filename_Moving + "To" + Filename_Fixed
-            )
-            os.system(
-                "antsRegistration "
-                f"-d {3} "
-                f"-r [{Path_FixedFilename}, {file}, 1] "
-                f"-m MI[{Path_FixedFilename},{file},{1},{8}, Regular, {0.5}] "
-                f"-t Rigid[{2}] "
-                f"-c [{500}x{500}x{500},{1e-6},{8}] "
-                f"-s {4}x{2}x{1}vox "
-                f"-f {4}x{2}x{2} "
-                f"-m MI[{Path_FixedFilename},{file},{1},{16}, Regular, {0.8}] "
-                f"-t Affine[{1}] "
-                f"-c [{500}x{500}x{500},{1e-6},{8}] "
-                f"-s {4}x{2}x{1}vox "
-                f"-f {4}x{2}x{2} "
-                f"-m mattes[{Path_FixedFilename},{file},{1},{32}, Regular, {0.8}] "
-                f"-t SyN[{0.5},{3},{1}] "
-                f"-c [{1200}x{1200}x{1000},{1e-6},{8}] "
-                f"-s {4}x{2}x{1}vox "
-                f"-f {4}x{2}x{2} "
-                f"-o [{out},{out}_Regis.nii.gz,{out}INV_Regis.nii.gz] "
-                " -x [NA,NA] "
-                "-v 1"
+            verbose and log_registration_info(
+                file.name, t2w_recN4_filename.split("/")[-1]
             )
 
-            if verbose:
-                print("REGISTRATION DONE")
+            out = transform_files_folder / f"{name_moving_image}_To_T2w_"
 
-            ##TRANSFORM FILES SAVE
-            if verbose:
-                print("======================================================")
-                print("    SAVING PART ")
-                print("======================================================")
+            run_ants_registration(t2w_recN4_filename, file.as_posix(), out.as_posix())
+            verbose and logger.info("ANTS registration command executed.")
 
-            # WarpFile = ants.image_read(Path_WarpFilename)
-            # ants.image_write(WarpFile, Path_WarpFilename)
-
-            if not (os.path.exists(Path_WarpFilename)) and not (
-                os.path.exists(Path_AffineFilename)
-            ):
-                Path_WarpFilename = Path_WarpFilename_2
-                Path_AffineFilename = Path_AffineFilename_2
-
-            if os.path.exists(Path_WarpFilename) or os.path.exists(Path_WarpFilename_2):
-                jac = ants.create_jacobian_determinant_image(
-                    Fixed, Path_WarpFilename, do_log=False
+            if warp_filename.exists():
+                verbose and logger.info("Jacobian determinant computation started...")
+                ref_init_space = ants.image_read(t2w_recN4_filename)
+                compute_and_save_jacobian(
+                    ref_init_space,
+                    warp_filename.as_posix(),
+                    (
+                        transform_files_folder
+                        / f"{name_moving_image}_To_T2w_Jacobian.nii.gz"
+                    ).as_posix(),
                 )
-                Path_JacFilename = os.path.join(
-                    Path_TransformFiles,
-                    Filename_Moving + "To" + Filename_Fixed + "_Jacobian.nii.gz",
-                )
-                ants.image_write(jac, Path_JacFilename)
-
-                Affine = ants.read_transform(Path_AffineFilename)
-                # ants.write_transform(Affine,  Path_AffineFilename)
-
-                Affine_matrix = (Affine.parameters)[0:9].reshape((3, 3))
-
-                Jacobian_textfile.write(
-                    "REGISTRATION type 1\n "
-                    "\n          moving --> "
-                    + str(file.split("/")[-1])
-                    + "\n          fixed --> "
-                    + Filename_Fixed
-                    + "\n    Mean Jacobian Warp File = "
-                    + str(jac.mean())
-                    + "\n    Jacobian Affine matrix = "
-                    + str(np.linalg.det(Affine_matrix))
-                    + "\n \n"
-                )
-            else:
-                Affine = ants.read_transform(Path_AffineFilename)
-                # ants.write_transform(Affine,  Path_AffineFilename)
-
-                Affine_matrix = (Affine.parameters)[0:9].reshape((3, 3))
-                Jacobian_textfile.write(
-                    "REGISTRATION type 1\n "
-                    "\n          moving --> "
-                    + str(file.split("/")[-1])
-                    + "\n          fixed --> "
-                    + Filename_Fixed
-                    + "\n    Jacobian Affine matrix = "
-                    + str(np.linalg.det(Affine_matrix))
-                    + "\n \n"
-                )
-
-            if verbose:
-                print("SAVING PART DONE")
-        else:
-            print("======================================================")
-            print("    TRANSFORM FILES ALREADY EXIST")
-            print("======================================================")
+                verbose and logger.info("Jacobian determinant computation completed.")
 
 
-def run_pipeline(MainDirectory, verbose):
-    Data_formating(MainDirectory, verbose)
-    # Registration_Type1(MainDirectory, verbose)
+def run_pipeline(working_directory: str | Path, verbose: bool) -> None:
+    moving_folder = Path(working_directory) / "moving"
+    fixed_folder = Path(working_directory) / "fixed"
+
+    logger.info("Starting data formatting and GIS to NIFTI conversion...")
+    convert_all_gis_files_to_nifti(moving_folder, fixed_folder, verbose)
+    logger.info("GIS to NIfTI conversion : done.")
+
+    logger.info("Applying N4 bias field correction to all NIFTI files...")
+    apply_n4_bias_correction_to_all_nifti_files(moving_folder, fixed_folder, verbose)
+    logger.info("N4 bias field correction : done.")
+
+    run_registrations_intrafov(working_directory, verbose)
+    logger.info("Intrafov registration pipeline completed.")
 
 
 def parse_command_line(argv):
