@@ -334,6 +334,17 @@ def init_intermediate_space(
     ni.save(ni_im, intermediate_space_filename)
 
 
+def load_translation_from_json(json_object):
+    """Decode the translation from the description JSON file.
+
+    Old encoding: ["10.0"]
+    New encoding: 10 or 10.0
+    """
+    if isinstance(json_object, list):
+        json_object = json_object[-1]
+    return float(json_object)
+
+
 def Preparation(
     File_directory: str | os.PathLike, JSON_filename: str, verbose=0
 ) -> None:
@@ -351,7 +362,7 @@ def Preparation(
     refty = 0
 
     for key in description:
-        ty = float(description[key][-1])  # Load translation from json file
+        ty = load_translation_from_json(description[key])
         key_directory = os.path.join(Materials_directory, key + ".nii.gz")
         keycorrected_directory = os.path.join(
             Preparation_directory, key + "_NLMF_N4.nii.gz"
@@ -418,7 +429,10 @@ def Preparation(
     intermediate_space = os.path.join(File_directory, "IntermediateSpace.nii.gz")
     if not (os.path.exists(intermediate_space)):
         logger.info("========= Init RefSpace =========")
-        img_ref_name = next((k for k, v in description.items() if v == ["0"]), None)
+        img_ref_name = next(
+            (k for k, v in description.items() if load_translation_from_json(v) == 0.0),
+            None,
+        )
         pos_filename = os.path.join(
             Preparation_directory, img_ref_name + "_NLMF_N4_rec-unwarp.nii.gz"
         )
