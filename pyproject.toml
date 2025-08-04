@@ -24,7 +24,8 @@ phcp-t1-relaxometry = "phcp.fov_scripts.t1_relaxometry:main"
 phcp-t2-relaxometry = "phcp.fov_scripts.t2_relaxometry:main"
 phcp-t2star-relaxometry = "phcp.fov_scripts.t2star_relaxometry:main"
 phcp-diffusion-pipeline = "phcp.fov_scripts.diffusion_pipeline:main"
-phcp-interfov-registration = "phcp.scripts.interfov_registration:main"
+phcp-prepare-interfov-registration = "phcp.scripts.prepare_interfov_registration:main"
+phcp-run-interfov-registration = "phcp.scripts.run_interfov_registration:main"
 phcp-prepare-published-dataset = "phcp.scripts.prepare_published_dataset:main"
 
 [tool.setuptools]
