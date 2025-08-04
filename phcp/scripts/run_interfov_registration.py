@@ -241,9 +241,8 @@ def parse_command_line(argv):
     parser.add_argument(
         "-v",
         "--verbose",
-        required=False,
-        default=False,
-        help="do not print detailed",
+        action="store_true",
+        help="print detailed status information",
     )
 
     args = parser.parse_args()
