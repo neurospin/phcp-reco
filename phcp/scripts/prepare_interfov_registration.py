@@ -32,7 +32,9 @@ def Unwarp(
     meta_warp = ni.load(Warpfilename)
     arr_warp = meta_warp.get_fdata()
 
-    basename = InputFilename.split(".")[0]
+    basename = os.path.join(
+        os.path.dirname(InputFilename), os.path.basename(InputFilename).split(".")[0]
+    )
     meta_input = ni.load(InputFilename)
 
     logger.info("========= Adjust GNLC Deformation Field Header =========")
