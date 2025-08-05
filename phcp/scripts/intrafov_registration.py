@@ -225,20 +225,21 @@ def parse_command_line(argv):
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Intrafov registration script for PHCP data."
+        description="Align each modality to the T2w image (reference) using ANTs registration."
+        "Consist of converting GIS files to NIFTI, applying N4 bias field correction, "
+        "and performing rigid, affine and SyN ANTs registration.",
     )
     parser.add_argument(
         "-i",
         "--workingDirectory",
         required=True,
-        help="Working directory such as DirectoryName/01-Materials   /02-..   /03-..",
+        help="Working directory such as DirectoryName/moving and DirectoryName/fixed",
     )
     parser.add_argument(
         "-v",
         "--verbose",
-        required=False,
-        default=False,
-        help="do not print detailed",
+        action="store_true",
+        help="print detailed status information",
     )
 
     args = parser.parse_args()
