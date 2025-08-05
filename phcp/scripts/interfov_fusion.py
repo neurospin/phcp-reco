@@ -223,7 +223,7 @@ def parse_command_line(argv):
 
     parser = argparse.ArgumentParser(
         description="Perform inter-FOV registration. "
-        "Be sure to run phcp-prepare-interfov-registration and create the transformation matrix "
+        "Be sure to run phcp-interfov-registration and create the transformation matrix "
         "before running this script.",
     )
     parser.add_argument(

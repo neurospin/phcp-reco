@@ -25,6 +25,15 @@ You may need to adapt the contents of [phcp/config.py](phcp/config.py) to suit y
 
 ## Data layout
 
+### Naming of input data
+
+Each block should be assigned a short `BlockName` to identify it, based on its anatomical location, e.g. `Inf`, `Mid`, `Sup`, `InfLat`, `SupMed`, etc.
+
+Each FOV within a block should be assigned a `FovName` that starts with `BlockName` and further specifies the position of the FOV within the block, e.g. `InfAnt`, `InfPos`, etc.
+
+Each imaging session corresponds to a single FOV and should be named with a concatenation of the acquisition date in `YYYYMMDD` format, and `FovName`, e.g. `20250101InfPos`.
+
+
 ### Source data
 
 The images of each field of view are first exported from the console in raw Bruker format and DICOM. The DICOM data is used for mostly everything, except that some acquisition parameters cannot be found in the DICOM metadata, namely the diffusion b-values and b-vectors, as well as the receiver gain. In those cases, we resort to reading them from the Bruker files `acqp`, `method` and `visu_pars`.
@@ -473,6 +482,116 @@ fov/derivatives/fov-reconstructed
 ```
 
 ## Registration pipeline
+
+### Intra-FOV registration
+
+To be added <!-- TODO -->
+
+### Inter-FOV registration
+
+Inter-FOV registration aims to reconstruct a whole-block image from its constituent FOVs. The main steps are:
+
+1. Placing the input data and creating a JSON file describing the input FOVs and the approximate translation between them;
+2. Running the `phcp-interfov-registration` script, which performs bias correction, denoising, gradient non-linearity correction, the inter-FOV translation, runs the actual registration, and initializes the geometry of the whole-block space;
+3. Creating a transformation file for placing the reference (most posterior) FOV into the whole-block space, and optionally fine-tuning the fusion parameters;
+4. Running `phcp-interfov-fusion` to apply the registration fuse all FOVs, yielding a whole-block T2-weighted image.
+
+#### Inputs of inter-FOV registration
+
+The inputs are the pre-calculated deformation field for correction of gradient non-linearity (`WarpHeaderFile_FWHM1.nii.gz`), a `Description.json` file described below, and the T2-weighted images of all FOVs. They should be prepared according to this layout:
+
+```
+derivatives/Registration/sub-{subjectID}/InterFOV_Registration/{BlockName}/
+├── 01-Materials
+│   ├── sub-{subjectID}_ses-{sessionIDFOV1}_T2w.nii.gz
+│   ├── sub-{subjectID}_ses-{sessionIDFOV2}_T2w.nii.gz
+│   ├── sub-{subjectID}_ses-{sessionIDFOV3}_T2w.nii.gz
+│   ├── ...
+│   └── WarpHeaderFile_FWHM1.nii.gz
+└── Description.json
+```
+
+A `Description.json` file should be prepared, listing the FOVs of the block and their relative translation values. In the example below, a block was acquired in 3 FOVs with 30 mm translation between each FOV. Note that the reference FOV (the most posterior FOV) needs to be identified with a **0.0** translation, and **other FOVs must have non-zero translation**.
+
+```json
+{
+    "sub-{subjectID}_ses-{sessionIDFOV1}_T2w": 0.0,
+    "sub-{subjectID}_ses-{sessionIDFOV2}_T2w": 30.0,
+    "sub-{subjectID}_ses-{sessionIDFOV3}_T2w": 60.0,
+}
+```
+
+#### Usage
+
+```shell
+phcp-interfov-registration --verbose \
+    -i derivatives/Registration/sub-{subjectID}/InterFOV_Registration/${BlockName} \
+    -j derivatives/Registration/sub-{subjectID}/InterFOV_Registration/${BlockName}/Description.json
+```
+
+#### Outputs of inter-FOV registration
+
+Each FOV is denoised with `NLMF` (non-local means filtering) and debiased with `N4`, corrected for gradient non-linearities, and the translation is applied to the header, yielding a preprocessed output with `_NLMF_N4_rec-unwarp` suffix. Note that the deformation fields are estimated and saved to the `03-TransformFiles` directory, but they are not applied to the data at this stage: therefore, quality control takes place *after* the next step of inter-FOV fusion.
+
+```
+derivatives/Registration/sub-{subjectID}/InterFOV_Registration/{BlockName}/
+├── 02-Preparation
+│   ├── sub-{subjectID}_ses-{sessionIDFOV1}_T2w_NLMF_N4_rec-unwarp.nii.gz
+│   ├── sub-{subjectID}_ses-{sessionIDFOV2}_T2w_NLMF_N4_rec-unwarp.nii.gz
+│   ├── sub-{subjectID}_ses-{sessionIDFOV3}_T2w_NLMF_N4_rec-unwarp.nii.gz
+│   ├── sub-{subjectID}_ses-{sessionIDFOV1}_T2w_sub-{subjectID}_ses-{sessionIDFOV1}_T2w.json
+│   ├── sub-{subjectID}_ses-{sessionIDFOV2}_T2w_sub-{subjectID}_ses-{sessionIDFOV3}_T2w.json
+│   └── ...
+├── 03-TransformFiles
+│   └── ...
+└── IntermediateSpace.nii.gz
+```
+
+#### Inputs of inter-FOV fusion
+
+The previous process creates a reference geometry for the whole-block image, `IntermediateSpace.nii.gz`, but that reference is not derived from the FOV geometry. Therefore, the image of the reference FOV (normally the most posterior FOV) must be manually registered into that intermediate space. This can be done by:
+1. Loading `IntermediateSpace.nii.gz` in ITK-SNAP as a main image, using the Jet colormap so that the background of that image appears blue on the black background (beware that this uniform image causes a crash of ITK-SNAP if Contrast inspector or Auto adjust constrast are used).
+2. Loading `02-Preparation/sub-{subjectID}_ses-{sessionIDRefFOV}_T2w_NLMF_N4_rec-unwarp.nii.gz` as an additional image in overlay mode.
+3. Using the Registration module of ITK-SNAP in Rigid mode, to perform manual alignment of the reference FOV at the extremity of the intermediate space. Make sure to hit *Zoom to fit* so that you can visualize the full whole-block space.
+4. Saving the resulting transformation matrix into a file named `refFOV_to_intermediateSpace.txt`.
+
+Inter-FOV fusion uses the following files:
+
+```
+derivatives/Registration/sub-{subjectID}/InterFOV_Registration/{BlockName}/
+├── 01-Materials
+│   ├── sub-{subjectID}_ses-{sessionIDFOV1}_T2w_NLMF_N4_rec-unwarp.nii.gz
+│   ├── sub-{subjectID}_ses-{sessionIDFOV2}_T2w_NLMF_N4_rec-unwarp.nii.gz
+│   ├── sub-{subjectID}_ses-{sessionIDFOV3}_T2w_NLMF_N4_rec-unwarp.nii.gz
+│   ├── ...
+├── 03-TransformFiles
+│   └── ...
+├── Description.json
+├── IntermediateSpace.nii.gz
+└── refFOV_to_intermediateSpace.txt
+```
+
+#### Usage
+
+```shell
+phcp-interfov-fusion \
+    -i derivatives/Registration/sub-{subjectID}/InterFOV_Registration/${BlockName} \
+    -j derivatives/Registration/sub-{subjectID}/InterFOV_Registration/${BlockName}/Description.json
+```
+
+#### Outputs of inter-FOV fusion
+
+```
+derivatives/Registration/sub-{subjectID}/InterFOV_Registration/{BlockName}/
+├── 04-FovsDistribution
+│   └── ...
+└── Reconstructed_block.nii.gz
+```
+
+You should check the quality of the reconstructed block at this stage, and make adjustments to the fusion parameters if necessary (currently this requires editing the scripts themselves).
+
+
+### Inter-block registration
 
 Complex and specimen-dependent, see the data paper.
 
