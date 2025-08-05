@@ -1,0 +1,153 @@
+# -*- mode: yaml -*-
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  phcp-reco: processing scripts for Prenatal Human
+  Connectome Patterns
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Lucas
+    family-names: Arcamone
+    affiliation: >-
+      UMR 1141 NeuroDiderot, Eq inDEV, INSERM, Université
+      Paris Cité, Hôpital Robert-Debré, Paris, France;
+      UNIACT, NeuroSpin, CEA, Université Paris-Saclay,
+      F-91191, Gif-sur-Yvette, France
+    orcid: 'https://orcid.org/0009-0006-1910-926X'
+  - given-names: Cyril
+    family-names: Poupon
+    affiliation: >-
+      BAOBAB, NeuroSpin, Université Paris-Saclay, CNRS, CEA,
+      F-91191, Gif-sur-Yvette, France
+    orcid: 'https://orcid.org/0000-0001-7906-8945'
+  - given-names: Lucie
+    family-names: Hertz-Pannier
+    affiliation: >-
+      UMR 1141 NeuroDiderot, Eq inDEV, INSERM, Université
+      Paris Cité, Hôpital Robert-Debré, Paris, France;
+      UNIACT, NeuroSpin, CEA, Université Paris-Saclay,
+      F-91191, Gif-sur-Yvette, France
+    orcid: 'https://orcid.org/0000-0003-4952-7009'
+  - given-names: Yann
+    family-names: Leprince
+    email: yann.leprince@cea.fr
+    affiliation: >-
+      UNIACT, NeuroSpin, CEA, Université Paris-Saclay,
+      F-91191, Gif-sur-Yvette, France; UMR 1141
+      NeuroDiderot, Eq inDEV, INSERM, Université Paris Cité,
+      Hôpital Robert-Debré, Paris, France
+    orcid: 'https://orcid.org/0000-0002-1846-3869'
+repository-code: 'https://github.com/neurospin/phcp-reco'
+abstract: >-
+  Reconstruction scripts for post-mortem multi-quantitative
+  fetal brain MRI at 11.7 teslas
+keywords:
+  - brain
+  - ultra high field MRI
+  - 11.7-tesla MRI
+  - fetus
+  - fetal
+  - prenatal
+  - neurodevelopment
+  - post mortem
+  - ex vivo
+  - high resolution
+  - mesoscopic imaging
+  - quantitative MRI
+  - relaxometry
+  - diffusion MRI
+license: CECILL-B
+references:
+  - title: >-
+      Registering non-overlapping brain tissue blocks: the case of 11.7T MRI
+      mesoscopic fetal data
+    type: conference-paper
+    conference:
+      name: 2025 IEEE 22nd International Symposium on Biomedical Imaging (ISBI)
+      city: Houston
+      region: Texas
+      country: US
+      date-start: '2025-04-14'
+      date-end: '2025-04-17'
+      website: 'https://biomedicalimaging.org/2025/'
+    languages:
+      - en
+    authors:
+      - family-names: Arcamone
+        given-names: Lucas
+      - family-names: Khung
+        given-names: Suonavy
+      - family-names: Poupon
+        given-names: Cyril
+      - family-names: Alison
+        given-names: Marianne
+      - family-names: Adle-Biassette
+        given-names: Homa
+      - family-names: Hertz-Pannier
+        given-names: Lucie
+      - family-names: Leprince
+        given-names: Yann
+    year: 2025
+  - title: Ex vivo 11.7T MR mesoscopic multimodal imaging of fetal brain development
+    type: conference-paper
+    conference:
+      name: >-
+        15th Scientific Day of the MRI-INT Centre: “Brain development from
+        fetuses to adolescents in Human & Non-Human Primates”
+      city: Marseille
+      country: FR
+      date-start: '2024-10-04'
+      date-end: '2024-10-04'
+    languages:
+      - en
+    url: 'https://cea.hal.science/cea-04729032'
+    authors:
+      - family-names: Arcamone
+        given-names: Lucas
+      - family-names: Poupon
+        given-names: Cyril
+      - family-names: Khung
+        given-names: Suonavy
+      - family-names: Alison
+        given-names: Marianne
+      - family-names: Adle-Biassette
+        given-names: Homa
+      - family-names: Leprince
+        given-names: Yann
+      - family-names: Hertz-Pannier
+        given-names: Lucie
+    date-published: '2024-10-04'
+  - title: 'Ex vivo 11,7T MR mesoscopic multimodal imaging of fetal brain development'
+    type: conference-paper
+    conference:
+      name: >-
+        2024 Annual Meeting of the International Society for Magnetic Resonance
+        in Medicine (ISMRM)
+      city: Singapore
+      country: SG
+      date-start: '2024-05-04'
+      date-end: '2024-05-09'
+      website: 'https://www.ismrm.org/24/'
+    languages:
+      - en
+    authors:
+      - family-names: Arcamone
+        given-names: Lucas
+      - family-names: Poupon
+        given-names: Cyril
+      - family-names: Khung
+        given-names: Suonavy
+      - family-names: Alison
+        given-names: Marianne
+      - family-names: Adle-Biassette
+        given-names: Homa
+      - family-names: Hertz-Pannier
+        given-names: Lucie
+      - family-names: Leprince
+        given-names: Yann
+    year: 2024
