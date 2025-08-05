@@ -198,6 +198,10 @@ def run_registrations_intrafov(working_directory: str | Path, verbose: bool) -> 
                     ).as_posix(),
                 )
                 verbose and logger.info("Jacobian determinant computation completed.")
+        else:
+            verbose and logger.info(
+                f"Skipping registration for {file.name} as it already exists."
+            )
 
 
 def run_pipeline(working_directory: str | Path, verbose: bool) -> None:
