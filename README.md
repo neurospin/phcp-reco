@@ -509,7 +509,7 @@ Rename your moving using the name of the modality as the first prefix (ex: `VFA_
 #### Usage
 
 ```shell
-phcp-interfov-registration --verbose \
+phcp-intrafov-registration --verbose \
     -i derivatives/Registration/sub-{subjectID}/IntraFOV_Registration/${FOVName}
 ```
 

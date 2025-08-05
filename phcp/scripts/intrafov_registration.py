@@ -169,7 +169,9 @@ def run_registrations_intrafov(working_directory: str | Path, verbose: bool) -> 
     for file in all_moving_filename:
         name_moving_image = file.name.split(".")[0].split("_")[0]
 
-        warp_filename = transform_files_folder / f"{name_moving_image}_To_T2w_1Warp.mat"
+        warp_filename = (
+            transform_files_folder / f"{name_moving_image}_To_T2w_1Warp.nii.gz"
+        )
         affine_filename = (
             transform_files_folder / f"{name_moving_image}_To_T2w_0GenericAffine.mat"
         )
@@ -198,6 +200,7 @@ def run_registrations_intrafov(working_directory: str | Path, verbose: bool) -> 
                     ).as_posix(),
                 )
                 verbose and logger.info("Jacobian determinant computation completed.")
+
         else:
             verbose and logger.info(
                 f"Skipping registration for {file.name} as it already exists."
