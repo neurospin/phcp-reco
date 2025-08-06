@@ -20,7 +20,7 @@ def run_ants_apply_registration(
         ref_space (str) : Reference space.
         input_img (str) : Image to transform.
         output_filename (str) : Output filename.
-        transforms (list) : List of transforms filenames.
+        transforms (list) : List of transforms filenames (applied in reverse order).
         interpolation (str) : Interpolation methods.
         dimensionality (int) : dimensionality.
         invert_flags (list) : Optional list of booleans indicating wether to invert each transform.
