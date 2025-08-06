@@ -604,18 +604,18 @@ You should check the quality of the reconstructed block at this stage, and make 
 The registration strategy is described in the data paper, but the details of registration can differ for different specimens. As a result, no registration scripts are distributed at the moment.
 
 
-### Merging Fields of View into Final Space : `fusion_FOVs_final_space.py`
+### Transformation into the final space and fusion
 
-This script merges multiple fields of view (FOVs) from the **initial space** into the **final space**. It consists of two main stages, controlled via the `--run` flag.
+The `phcp-transform-and-fuse` script merges multiple fields of view (FOVs) from the **initial space** into the **final space**. It consists of two main stages, controlled via the `--run` flag.
 
 #### Example Workflow
 
-```bash
+```shell
 # Step 1: Prepare final-space materials (default mode)
-python reconstruct.py -p fov/derivatives/Registration/sub-{subjectID}/fusion/
+phcp-transform-and-fuse -p fov/derivatives/Registration/sub-{subjectID}/fusion/
 
 # Step 2: Merge using 3 blocks
-python reconstruct.py -p fov/derivatives/Registration/sub-{subjectID}/fusion/ --run -n 3
+phcp-transform-and-fuse -p fov/derivatives/Registration/sub-{subjectID}/fusion/ --run -n 3
 ```
 
 ##### Stage 1: Prepare Materials (Default, without `--run`)
@@ -724,14 +724,15 @@ Each file should follow this structure:
 - Do **not skip any FOVs**.
 
 
-#### Optional Script: `concat_transforms.py`
-The `concat_transforms.py` script concatenates a series of linear and non-linear transformations applied to a single field of view (FOV), producing two key output files:
+#### Concatenation of transformations (optional)
+
+The `phcp-concat-transforms` script concatenates a series of linear and non-linear transformations applied to a single field of view (FOV), producing two key output files:
 - `total_affine_transform.txt`
 - `total_deformation_field.nii.gz`
 
 ##### Example
 ```bash
-python concat_transforms.py
+phcp-concat-transforms
 	--input 'sub-{sub}_ses-{ses}_T2w.nii.gz'
 	--json  'transform_filenames_sorted.json'
 	--output /output_directory_path/
