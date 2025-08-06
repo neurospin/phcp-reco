@@ -722,13 +722,13 @@ Each file should follow this structure:
 - Do **not skip any FOVs**.
 
 
-#### Concatenation of transformations (optional)
+### Concatenation of transformations (optional)
 
 The `phcp-concat-transforms` script concatenates a series of linear and non-linear transformations applied to a single field of view (FOV), producing two key output files:
 - `total_affine_transform.txt`
 - `total_deformation_field.nii.gz`
 
-##### Example
+#### Example
 ```shell
 phcp-concat-transforms \
 	--input sub-${sub}_ses-${ses}_T2w.nii.gz \
@@ -736,7 +736,7 @@ phcp-concat-transforms \
 	--output /output_directory_path/
 ```
 
-##### Required Inputs
+#### Required Inputs
 - `sub-{sub}_ses-{ses}_T2w.nii.gz` defines the **initial (native) space**. The output `total_deformation_field.nii.gz` space will be the same.
 - `transform_filenames_sorted.json` lists the successive transformation files, sorted in the order they should be applied (from first to last). The file should follow this structure:
 ```json
@@ -749,7 +749,7 @@ phcp-concat-transforms \
 ```
 
 
-##### Output Files and Usage
+#### Output Files and Usage
 The script generates the following **main outputs**:
 1. `total_deformation_field.nii.gz` -- A non-linear deformation field in ANTs format, usable directly with `antsApplyTransforms`.
 2. `total_affine_transform.txt` -- A text file representing the combined affine transformation.
@@ -758,7 +758,7 @@ To apply the transformations correctly using `antsApplyTransforms`, use the foll
 1. `total_deformation_field.nii.gz`
 2. `total_affine_transform.txt`
 
-##### Additional Files
+#### Additional Files
 - **Secondary files** (not discussed in this repository but included for reference): `jacobian_deformation_field.nii.gz`, `jacobianLog_deformation_field.nii.gz`, `total_deformation_field_smoothed.nii.gz`
 - **Tertiary files**: Intermediate files generated during processing; not required for downstream analysis.
 
