@@ -635,8 +635,8 @@ phcp-concat-transforms \
 
 #### Output Files and Usage
 The script generates the following **main outputs**:
-1. `total_deformation_field.nii.gz` -- A non-linear deformation field in ANTs format, usable directly with `antsApplyTransforms`.
-2. `total_affine_transform.txt` -- A text file representing the combined affine transformation.
+1. `total_deformation_field.nii.gz` – A non-linear deformation field in ANTs format, usable directly with `antsApplyTransforms`.
+2. `total_affine_transform.txt` – A text file representing the combined affine transformation.
 
 To apply the transformations correctly using `antsApplyTransforms`, use the following order:
 1. `total_deformation_field.nii.gz`
@@ -677,7 +677,7 @@ derivatives/Registration
 └── sub-{subjectID}
     └── Fusion
         ├── 01-InitSpace/
-        │   ├── {modality}_{fov}.nii.gz
+        │   ├── {modality}_{FovName}.nii.gz
         │   └── ...
         ├── SendToRefSpace_{modality}.json
         └── SendToRefSpace_...
@@ -693,7 +693,7 @@ T2star_InfMid.nii.gz
 ...
 ```
 
-- File naming format: `{modality}_{FOV}.nii.gz`, where `{modality}` in [ `QT1`, `QT2`, `QT2star`, `ADC1500`, `ADC4500`, `ADC8000`, `FA1500`, `FA4500`, `FA8000`, `TransDiff1500`, `TransDiff4500`, `TransDiff8000`,  `ParaDiff1500`, `ParaDiff4500`, `ParaDiff8000`, `GFA1500`, `GFA4500`, `GFA8000`, `T2w`] and `{FOV}` can be any custom label (e.g., `InfPos`, `InfMid`, etc.)
+- File naming format: `{modality}_{FovName}.nii.gz`, where `{modality}` in [ `QT1`, `QT2`, `QT2star`, `ADC1500`, `ADC4500`, `ADC8000`, `FA1500`, `FA4500`, `FA8000`, `TransDiff1500`, `TransDiff4500`, `TransDiff8000`,  `ParaDiff1500`, `ParaDiff4500`, `ParaDiff8000`, `GFA1500`, `GFA4500`, `GFA8000`, `T2w`] and `{FovName}` is the FOV name as described above.
 - Supported formats: **GIS** or **NIfTI**
 - **Must contain at least T2star modality**
 
