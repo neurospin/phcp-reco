@@ -731,21 +731,23 @@ The `phcp-concat-transforms` script concatenates a series of linear and non-line
 #### Example
 ```shell
 phcp-concat-transforms \
-	--input sub-${sub}_ses-${ses}_T2w.nii.gz \
-	--json transform_filenames_sorted.json \
-	--output /output_directory_path/
+    --input sub-${sub}_ses-${ses}_T2w.nii.gz \
+    --json transform_filenames_sorted.json \
+    --output /output_directory_path/
 ```
 
 #### Required Inputs
 - `sub-{sub}_ses-{ses}_T2w.nii.gz` defines the **initial (native) space**. The output `total_deformation_field.nii.gz` space will be the same.
 - `transform_filenames_sorted.json` lists the successive transformation files, sorted in the order they should be applied (from first to last). The file should follow this structure:
 ```json
-	{
-	  "tparams": ["First_transform_filename(.txt or .nii.gz),
-	  	      "Second_transform_filename(.txt or .nii.gz),
-	  	      ...,
-	  	      Last_transform_filename(.txt or .nii.gz) "]
-	}
+{
+  "tparams": [
+    "First_transform_filename(.txt or .nii.gz),
+    "Second_transform_filename(.txt or .nii.gz),
+    ...,
+    Last_transform_filename(.txt or .nii.gz)"
+  ]
+}
 ```
 
 
