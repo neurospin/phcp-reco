@@ -624,10 +624,10 @@ phcp-concat-transforms \
 ```json
 {
   "tparams": [
-    "First_transform_filename(.txt or .nii.gz),
-    "Second_transform_filename(.txt or .nii.gz),
-    ...,
-    Last_transform_filename(.txt or .nii.gz)"
+    "First_transform_filename(.txt or .nii.gz)",
+    "Second_transform_filename(.txt or .nii.gz)",
+    "...",
+    "Last_transform_filename(.txt or .nii.gz)"
   ]
 }
 ```
@@ -705,10 +705,10 @@ You must provide one JSON file per modality (`QT1`, `QT2`, `QT2star`, `DWI`-one 
 {
   "RefSpace": "refspace_filename_path",
   "InfPos": {
-    "tparams": ["last_transformation_path", ..., "first_transformation_path"]
+    "tparams": ["last_transformation_path", "...", "first_transformation_path"]
   },
   "InfMid": {
-    ...
+    "tparams": ["..."]
   }
 }
 ```
@@ -752,9 +752,9 @@ Each file should follow this structure:
 
 ```json
 {
-  "mask": ["mask_file_1", ..., "mask_file_n"],
-  "modality_1": ["modality1_file_1", ..., "modality1_file_n"],
-  ...
+  "mask": ["mask_file_1", "...", "mask_file_n"],
+  "modality_1": ["modality1_file_1", "...", "modality1_file_n"],
+  "modality_2": ["..."]
 }
 ```
 
