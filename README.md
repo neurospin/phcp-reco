@@ -612,10 +612,10 @@ The `phcp-transform-and-fuse` script merges multiple fields of view (FOVs) from 
 
 ```shell
 # Step 1: Prepare final-space materials (default mode)
-phcp-transform-and-fuse -p fov/derivatives/Registration/sub-{subjectID}/fusion/
+phcp-transform-and-fuse -p fov/derivatives/Registration/sub-${sub}/fusion/
 
 # Step 2: Merge using 3 blocks
-phcp-transform-and-fuse -p fov/derivatives/Registration/sub-{subjectID}/fusion/ --run -n 3
+phcp-transform-and-fuse -p fov/derivatives/Registration/sub-${sub}/fusion/ --run -n 3
 ```
 
 ##### Stage 1: Prepare Materials (Default, without `--run`)
@@ -731,10 +731,10 @@ The `phcp-concat-transforms` script concatenates a series of linear and non-line
 - `total_deformation_field.nii.gz`
 
 ##### Example
-```bash
-phcp-concat-transforms
-	--input 'sub-{sub}_ses-{ses}_T2w.nii.gz'
-	--json  'transform_filenames_sorted.json'
+```shell
+phcp-concat-transforms \
+	--input sub-${sub}_ses-${ses}_T2w.nii.gz \
+	--json transform_filenames_sorted.json \
 	--output /output_directory_path/
 ```
 
