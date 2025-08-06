@@ -10,6 +10,7 @@ dependencies = [
   "nibabel~=3.2",
   "scipy~=1.8",
   "antspyx~=0.4.0",
+  "SimpleITK~=2.3.1",
 ]
 requires-python = ">=3.10"
 
@@ -26,6 +27,8 @@ phcp-t2star-relaxometry = "phcp.fov_scripts.t2star_relaxometry:main"
 phcp-diffusion-pipeline = "phcp.fov_scripts.diffusion_pipeline:main"
 phcp-interfov-registration = "phcp.scripts.interfov_registration:main"
 phcp-interfov-fusion = "phcp.scripts.interfov_fusion:main"
+phcp-concat-transforms = "phcp.scripts.concat_transforms:main"
+phcp-transform-and-fuse = "phcp.scripts.transform_and_fuse:main"
 phcp-prepare-published-dataset = "phcp.scripts.prepare_published_dataset:main"
 
 [tool.setuptools]
