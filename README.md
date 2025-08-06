@@ -493,7 +493,36 @@ The reconstruction pipeline consists of:
 
 ### Intra-FOV registration
 
-To be added <!-- TODO -->
+Intra-FOV registration aims to align each modality to the modality of reference (T2-weighted). The main steps are:
+
+1. Placing the modality of reference (T2-weighted) in 'fixed' folder and all other modalities inside the 'moving' folder;
+2. Running the `phcp-intrafov-registration` script, preforming format conversion when needed (GIS to NIfTI), bias correction and intra-FOV registration.
+
+#### Inputs of intra-FOV registration
+
+The inputs are the two main folders ('fixed' and 'moving') containing modalities to register.
+```
+derivatives/Registration/sub-{subjectID}/IntraFOV_Registration/{FovName}/
+├── fixed
+│   └── sub-{subjectID}_ses-{sessionIDFOV1}_T2w.nii.gz
+└── moving
+    ├── {modality-prefix}_{FovName1}.nii.gz or .ima
+    ├── {modality-prefix}_{FovName2}.nii.gz or .ima
+    └── ...
+```
+
+Rename your moving using the name of the modality as the first prefix (ex: `VFA_flip-90.nii.gz`, `MSME_echo-1.nii.gz`, ...).
+#### Usage
+
+```shell
+phcp-intrafov-registration --verbose \
+    -i derivatives/Registration/sub-${sub}/IntraFOV_Registration/${FovName}
+```
+
+#### Outputs of intra-FOV registration
+Intra-FOV creates transformation files in the 'transform_files' folder, which is created automatically. Transformation files will have the following name architecture : `{modality-prefix}_To_T2w_{object}.{extension}`. `object` refers to the type of file created and can take the following values: `0GenericAffine`, `1Warp`, `1InverseWarp`, `Regis`, `INV_Regis`. And `extension` can be `mat` if it is a linear transformation file and `nii.gz` if it is an NIfTI image such as the warped image or the deformation field.
+
+<!-- TODO add a word on how to perform quality control on the intra-FOV registration -->
 
 ### Inter-FOV registration
 
