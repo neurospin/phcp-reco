@@ -618,7 +618,7 @@ phcp-transform-and-fuse -p fov/derivatives/Registration/sub-${sub}/fusion/
 phcp-transform-and-fuse -p fov/derivatives/Registration/sub-${sub}/fusion/ --run -n 3
 ```
 
-##### Stage 1: Prepare Materials (Default, without `--run`)
+#### Stage 1: Prepare Materials (Default, without `--run`)
 
 This stage generates all necessary materials for reconstruction in the final space from T2star modality in the initial space, including:
 
@@ -673,8 +673,6 @@ You must provide one JSON file per modality (`QT1`, `QT2`, `QT2star`, `DWI`-one 
 
 - `tparams` is a list of filenames that describe each step of the transformation chain. Each filename can point to either a linear transformation (`.txt` or `.mat` or a non-linear deformation field (`.nii.gz`). The files must be sorted from the last transformation file to the first.
 
----
-
 ##### Stage 2: Merge Blocks (with `--run` and `-n`)
 
 **This stage must be performed after the stage 1.** Merges the transformed data located in `02-RefSpace` using:
@@ -684,7 +682,7 @@ You must provide one JSON file per modality (`QT1`, `QT2`, `QT2star`, `DWI`-one 
 
 Stores the reconstructed blocks in `03-Blocks` and the final reconstruction in `04-Reconstruction`.
 
-##### Required Inputs
+###### Required Inputs
 
 ```
 fov/derivatives/Registration
@@ -717,7 +715,7 @@ Each file should follow this structure:
 }
 ```
 
-##### Important Notes:
+###### Important Notes:
 
 - File paths must be **ordered continuously** from one anatomical end to the other (e.g., `InfPos` > `InfMid` > `InfAnt`).
 - Reverse order (e.g., `InfAnt` > `InfMid` > `InfPos`) is also valid, as long as the sequence is consistent.
