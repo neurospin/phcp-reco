@@ -604,6 +604,49 @@ You should check the quality of the reconstructed block at this stage, and make 
 The registration strategy is described in the data paper, but the details of registration can differ for different specimens. As a result, no registration scripts are distributed at the moment.
 
 
+### Concatenation of transformations (optional)
+
+The `phcp-concat-transforms` script concatenates a series of linear and non-linear transformations applied to a single field of view (FOV), producing two key output files:
+- `total_affine_transform.txt`
+- `total_deformation_field.nii.gz`
+
+#### Example
+```shell
+phcp-concat-transforms \
+    --input sub-${sub}_ses-${ses}_T2w.nii.gz \
+    --json transform_filenames_sorted.json \
+    --output /output_directory_path/
+```
+
+#### Required Inputs
+- `sub-{sub}_ses-{ses}_T2w.nii.gz` defines the **initial (native) space**. The output `total_deformation_field.nii.gz` space will be the same.
+- `transform_filenames_sorted.json` lists the successive transformation files, sorted in the order they should be applied (from first to last). The file should follow this structure:
+```json
+{
+  "tparams": [
+    "First_transform_filename(.txt or .nii.gz),
+    "Second_transform_filename(.txt or .nii.gz),
+    ...,
+    Last_transform_filename(.txt or .nii.gz)"
+  ]
+}
+```
+
+
+#### Output Files and Usage
+The script generates the following **main outputs**:
+1. `total_deformation_field.nii.gz` -- A non-linear deformation field in ANTs format, usable directly with `antsApplyTransforms`.
+2. `total_affine_transform.txt` -- A text file representing the combined affine transformation.
+
+To apply the transformations correctly using `antsApplyTransforms`, use the following order:
+1. `total_deformation_field.nii.gz`
+2. `total_affine_transform.txt`
+
+#### Additional Files
+- **Secondary files** (not discussed in this repository but included for reference): `jacobian_deformation_field.nii.gz`, `jacobianLog_deformation_field.nii.gz`, `total_deformation_field_smoothed.nii.gz`
+- **Tertiary files**: Intermediate files generated during processing; not required for downstream analysis.
+
+
 ### Transformation into the final space and fusion
 
 The `phcp-transform-and-fuse` script merges multiple fields of view (FOVs) from the **initial space** into the **final space**. It consists of two main stages, controlled via the `--run` flag.
@@ -720,49 +763,6 @@ Each file should follow this structure:
 - File paths must be **ordered continuously** from one anatomical end to the other (e.g., `InfPos` > `InfMid` > `InfAnt`).
 - Reverse order (e.g., `InfAnt` > `InfMid` > `InfPos`) is also valid, as long as the sequence is consistent.
 - Do **not skip any FOVs**.
-
-
-### Concatenation of transformations (optional)
-
-The `phcp-concat-transforms` script concatenates a series of linear and non-linear transformations applied to a single field of view (FOV), producing two key output files:
-- `total_affine_transform.txt`
-- `total_deformation_field.nii.gz`
-
-#### Example
-```shell
-phcp-concat-transforms \
-    --input sub-${sub}_ses-${ses}_T2w.nii.gz \
-    --json transform_filenames_sorted.json \
-    --output /output_directory_path/
-```
-
-#### Required Inputs
-- `sub-{sub}_ses-{ses}_T2w.nii.gz` defines the **initial (native) space**. The output `total_deformation_field.nii.gz` space will be the same.
-- `transform_filenames_sorted.json` lists the successive transformation files, sorted in the order they should be applied (from first to last). The file should follow this structure:
-```json
-{
-  "tparams": [
-    "First_transform_filename(.txt or .nii.gz),
-    "Second_transform_filename(.txt or .nii.gz),
-    ...,
-    Last_transform_filename(.txt or .nii.gz)"
-  ]
-}
-```
-
-
-#### Output Files and Usage
-The script generates the following **main outputs**:
-1. `total_deformation_field.nii.gz` -- A non-linear deformation field in ANTs format, usable directly with `antsApplyTransforms`.
-2. `total_affine_transform.txt` -- A text file representing the combined affine transformation.
-
-To apply the transformations correctly using `antsApplyTransforms`, use the following order:
-1. `total_deformation_field.nii.gz`
-2. `total_affine_transform.txt`
-
-#### Additional Files
-- **Secondary files** (not discussed in this repository but included for reference): `jacobian_deformation_field.nii.gz`, `jacobianLog_deformation_field.nii.gz`, `total_deformation_field_smoothed.nii.gz`
-- **Tertiary files**: Intermediate files generated during processing; not required for downstream analysis.
 
 
 ## Data publication
