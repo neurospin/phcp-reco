@@ -486,6 +486,11 @@ fov/derivatives/fov-reconstructed
 
 ## The reconstruction pipeline
 
+The reconstruction pipeline consists of:
+1. Obtaining the deformation fields that bring all fields of view into spatial correspondence. The registration strategy consists of three steps described below: intra-FOV registration, inter-FOV registration, and inter-block registration.
+2. Applying these deformation fields to each field of view, and merging the data into a single image.
+
+
 ### Intra-FOV registration
 
 To be added <!-- TODO -->
@@ -596,21 +601,14 @@ You should check the quality of the reconstructed block at this stage, and make 
 
 ### Inter-block registration
 
-The reconstruction pipeline consists of:
-1. Obtaining the deformation fields that bring all fields of view into spatial correspondence. The registration strategy is described in the publications, but the details of registration can differ for different specimens. As a result, no registration scripts are distributed at the moment.
-2. Applying these deformation fields to each field of view, and merging the data into a single image.
+The registration strategy is described in the data paper, but the details of registration can differ for different specimens. As a result, no registration scripts are distributed at the moment.
 
----
 
-### I. Registration process & transformation concatenation
-
----
-
-### II. Merging Fields of View into Final Space : `fusion_FOVs_final_space.py`
+### Merging Fields of View into Final Space : `fusion_FOVs_final_space.py`
 
 This script merges multiple fields of view (FOVs) from the **initial space** into the **final space**. It consists of two main stages, controlled via the `--run` flag.
 
-### Example Workflow
+#### Example Workflow
 
 ```bash
 # Step 1: Prepare final-space materials (default mode)
@@ -620,7 +618,7 @@ python reconstruct.py -p fov/derivatives/Registration/sub-{subjectID}/fusion/
 python reconstruct.py -p fov/derivatives/Registration/sub-{subjectID}/fusion/ --run -n 3
 ```
 
-#### Stage 1: Prepare Materials (Default, without `--run`)
+##### Stage 1: Prepare Materials (Default, without `--run`)
 
 This stage generates all necessary materials for reconstruction in the final space from T2star modality in the initial space, including:
 
@@ -629,7 +627,7 @@ This stage generates all necessary materials for reconstruction in the final spa
 
 All output will be stored in a folder created automatically and named `02-RefSpace`.
 
-#### Required Inputs
+##### Required Inputs
 Considering `Fusion` folder as the working directory :
 ```
 fov/derivatives/Registration
@@ -642,7 +640,7 @@ fov/derivatives/Registration
         └── SendToRefSpace_...
 ```
 
-##### 1. `01-InitSpace/` folder
+###### 1. `01-InitSpace/` folder
 
 Must contain your FOV data in the initial space files, for example:
 
@@ -656,7 +654,7 @@ T2star_InfMid.nii.gz
 - Supported formats: **GIS** or **NIfTI**
 - **Must contain at least T2star modality**
 
-##### 2. `SendToRefSpace_{modality}.json` files
+###### 2. `SendToRefSpace_{modality}.json` files
 
 You must provide one JSON file per modality (`QT1`, `QT2`, `QT2star`, `DWI`-one key for all DWI modalities-, `T2W`), with the following structure:
 
@@ -677,7 +675,7 @@ You must provide one JSON file per modality (`QT1`, `QT2`, `QT2star`, `DWI`-one 
 
 ---
 
-#### Stage 2: Merge Blocks (with `--run` and `-n`)
+##### Stage 2: Merge Blocks (with `--run` and `-n`)
 
 **This stage must be performed after the stage 1.** Merges the transformed data located in `02-RefSpace` using:
 
@@ -686,7 +684,7 @@ You must provide one JSON file per modality (`QT1`, `QT2`, `QT2star`, `DWI`-one 
 
 Stores the reconstructed blocks in `03-Blocks` and the final reconstruction in `04-Reconstruction`.
 
-#### Required Inputs
+##### Required Inputs
 
 ```
 fov/derivatives/Registration
@@ -698,7 +696,7 @@ fov/derivatives/Registration
         └── block...
 ```
 
-##### 1. `block_{i}.json` files
+###### 1. `block_{i}.json` files
 
 For `n` blocks, create `n` files named:
 
@@ -719,19 +717,19 @@ Each file should follow this structure:
 }
 ```
 
-#### Important Notes:
+##### Important Notes:
 
 - File paths must be **ordered continuously** from one anatomical end to the other (e.g., `InfPos` > `InfMid` > `InfAnt`).
 - Reverse order (e.g., `InfAnt` > `InfMid` > `InfPos`) is also valid, as long as the sequence is consistent.
 - Do **not skip any FOVs**.
 
 
-### Optional Script: `concat_transforms.py`
+#### Optional Script: `concat_transforms.py`
 The `concat_transforms.py` script concatenates a series of linear and non-linear transformations applied to a single field of view (FOV), producing two key output files:
 - `total_affine_transform.txt`
 - `total_deformation_field.nii.gz`
 
-#### Example
+##### Example
 ```bash
 python concat_transforms.py
 	--input 'sub-{sub}_ses-{ses}_T2w.nii.gz'
@@ -739,7 +737,7 @@ python concat_transforms.py
 	--output /output_directory_path/
 ```
 
-#### Required Inputs
+##### Required Inputs
 - `sub-{sub}_ses-{ses}_T2w.nii.gz` defines the **initial (native) space**. The output `total_deformation_field.nii.gz` space will be the same.
 - `transform_filenames_sorted.json` lists the successive transformation files, sorted in the order they should be applied (from first to last). The file should follow this structure:
 ```json
@@ -752,7 +750,7 @@ python concat_transforms.py
 ```
 
 
-#### Output Files and Usage
+##### Output Files and Usage
 The script generates the following **main outputs**:
 1. `total_deformation_field.nii.gz` -- A non-linear deformation field in ANTs format, usable directly with `antsApplyTransforms`.
 2. `total_affine_transform.txt` -- A text file representing the combined affine transformation.
@@ -761,7 +759,7 @@ To apply the transformations correctly using `antsApplyTransforms`, use the foll
 1. `total_deformation_field.nii.gz`
 2. `total_affine_transform.txt`
 
-#### Additional Files
+##### Additional Files
 - **Secondary files** (not discussed in this repository but included for reference): `jacobian_deformation_field.nii.gz`, `jacobianLog_deformation_field.nii.gz`, `total_deformation_field_smoothed.nii.gz`
 - **Tertiary files**: Intermediate files generated during processing; not required for downstream analysis.
 
