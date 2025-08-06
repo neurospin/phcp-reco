@@ -673,13 +673,13 @@ All output will be stored in a folder created automatically and named `02-RefSpa
 ##### Required Inputs
 Considering `Fusion` folder as the working directory :
 ```
-fov/derivatives/Registration
+derivatives/Registration
 └── sub-{subjectID}
     └── Fusion
-        └── 01-InitSpace/
-            └── {modality}_{fov}.nii.gz
-            └── ...
-        └── SendToRefSpace_{modality}.json
+        ├── 01-InitSpace/
+        │   ├── {modality}_{fov}.nii.gz
+        │   └── ...
+        ├── SendToRefSpace_{modality}.json
         └── SendToRefSpace_...
 ```
 
@@ -728,12 +728,12 @@ Stores the reconstructed blocks in `03-Blocks` and the final reconstruction in `
 ###### Required Inputs
 
 ```
-fov/derivatives/Registration
+derivatives/Registration
 └── sub-{subjectID}
     └── Fusion
-        └── 02-RefSpace/
-            └── ...
-        └── block_{i}.json
+        ├── 02-RefSpace/
+        │   └── ...
+        ├── block_{i}.json
         └── block...
 ```
 
