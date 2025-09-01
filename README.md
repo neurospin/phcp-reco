@@ -1,3 +1,4 @@
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/neurospin/phcp-reco/main.svg)](https://results.pre-commit.ci/latest/github/neurospin/phcp-reco/main)
 [![SWH](https://archive.softwareheritage.org/badge/origin/https://github.com/neurospin/phcp-reco/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/neurospin/phcp-reco)
 
 # phcp-reco
