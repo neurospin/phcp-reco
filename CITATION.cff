@@ -42,6 +42,15 @@ authors:
       NeuroDiderot, Eq inDEV, INSERM, Université Paris Cité,
       Hôpital Robert-Debré, Paris, France
     orcid: 'https://orcid.org/0000-0002-1846-3869'
+identifiers:
+  - type: doi
+    value: 10.1101/2025.09.08.669657
+    description: The DOI of the preprint describing this work
+  - type: doi
+    value: 10.25493/X3K8-Y9W
+    description: >-
+      The DOI of the dataset for which these scripts were
+      developed
 repository-code: 'https://github.com/neurospin/phcp-reco'
 abstract: >-
   Reconstruction scripts for post-mortem multi-quantitative
@@ -62,6 +71,35 @@ keywords:
   - relaxometry
   - diffusion MRI
 license: CECILL-B
+preferred-citation:
+  title: >-
+    Multimodal imaging of human fetal brain development
+    at the mesoscopic scale using 11.7 T ex vivo MRI
+  type: article
+  status: preprint
+  journal: bioRxiv
+  license: CC-BY-4.0
+  languages:
+    - en
+  date-published: "2025-09-08"
+  doi: 10.1101/2025.09.08.669657
+  authors:
+    - family-names: Arcamone
+      given-names: Lucas
+    - family-names: Poupon
+      given-names: Cyril
+    - family-names: Adle-Biassette
+      given-names: Homa
+    - family-names: Khung-Savatovsky
+      given-names: Suonavy
+    - family-names: Alison
+      given-names: Marianne
+    - family-names: Dubois
+      given-names: Jessica
+    - family-names: Hertz-Pannier
+      given-names: Lucie
+    - family-names: Leprince
+      given-names: Yann
 references:
   - title: >-
       Registering non-overlapping brain tissue blocks: the case of 11.7T MRI
