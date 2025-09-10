@@ -41,6 +41,48 @@ def insert_transformation_file(
             )
 
 
+def add_padding_to_fov(
+    input_filename: str | os.PathLike, padding_1: int, padding_0: int
+) -> None:
+    FOV_filename = input_filename.replace("_NLMF_N4_rec-unwarp.nii.gz", "_FOV.nii.gz")
+
+    meta = ni.load(input_filename)
+    ni.save(ni.Nifti1Image(np.ones(meta.shape), meta.affine, meta.header), FOV_filename)
+
+    FOV_weight_filename = FOV_filename.replace(".nii.gz", "_weight.nii.gz")
+
+    fov_mapping = np.ones(meta.shape)
+
+    pad_fov_mapping = np.pad(
+        fov_mapping,
+        pad_width=((padding_1, padding_1), (padding_1, padding_1), (0, 0)),
+        mode="constant",
+        constant_values=1,
+    )
+    pad_fov_mapping = np.pad(
+        pad_fov_mapping,
+        pad_width=((padding_0, padding_0), (padding_0, padding_0), (5, 5)),
+        mode="constant",
+        constant_values=0,
+    )
+
+    distance_mapping = nd.distance_transform_edt(
+        pad_fov_mapping, meta.header["pixdim"][1]
+    )
+    weight_mapping = sigmoid(distance_mapping, 2, 4)
+
+    # Change the header to integrate padding
+    affine = meta.affine
+    affine[0][3] -= meta.header["pixdim"][1] * (padding_1 + padding_0)
+    affine[1][3] -= meta.header["pixdim"][3] * 5
+    affine[2][3] -= meta.header["pixdim"][2] * (padding_1 + padding_0)
+
+    ni.save(
+        ni.Nifti1Image(weight_mapping, affine, meta.header),
+        FOV_weight_filename,
+    )
+
+
 def merge_FOVs(File_directory: str | os.PathLike, JSON_filename: str) -> None:
     preparation_directory = os.path.join(File_directory, "02-Preparation")
     transformfile_directory = os.path.join(File_directory, "03-TransformFiles")
@@ -85,18 +127,36 @@ def merge_FOVs(File_directory: str | os.PathLike, JSON_filename: str) -> None:
 
         logger.info(f"Send {filename} to the intermediate space : Done")
 
-        logger.info("========= Creation of FOV mapping =========")
-        meta = ni.load(input_filename)
+        logger.info(
+            "========= Creation of the geometric penalty in the initial space ========="
+        )
+
         FOV_filename = input_filename.replace(
             "_NLMF_N4_rec-unwarp.nii.gz", "_FOV.nii.gz"
         )
+
+        FOV_weight_filename = FOV_filename.replace(".nii.gz", "_weight.nii.gz")
+
         output_FOV_filename = os.path.join(
             distribution_directory,
             FOV_filename.split("/")[-1].replace(".nii.gz", "_IS.nii.gz"),
         )
-        ni.save(
-            ni.Nifti1Image(np.ones(meta.shape), meta.affine, meta.header), FOV_filename
+
+        output_FOV_weight_filename = os.path.join(
+            distribution_directory,
+            FOV_weight_filename.split("/")[-1].replace(".nii.gz", "_IS.nii.gz"),
         )
+
+        add_padding_to_fov(input_filename, padding_1=30, padding_0=5)
+
+        run_ants_apply_registration(
+            intermediate_space_filename,
+            FOV_weight_filename,
+            output_FOV_weight_filename,
+            transforms_list,
+            interpolation="NearestNeighbor",
+        )
+
         run_ants_apply_registration(
             intermediate_space_filename,
             FOV_filename,
@@ -104,10 +164,6 @@ def merge_FOVs(File_directory: str | os.PathLike, JSON_filename: str) -> None:
             transforms_list,
             interpolation="NearestNeighbor",
         )
-        logger.info("Creation of FOV mapping : Done")
-        logger.info("========= Creation of FOV weight =========")
-        calcul_weight_FOVs(output_FOV_filename)
-        logger.info("Creation of FOV weight : Done")
 
         if not (i > 0):
             reconstructed_block_nifti_im = ni.load(output_filename)
@@ -156,7 +212,7 @@ def merge_consecutive_FOVs(
     )
     act_fov_mask_filename = "".join([actual_subject_filename, "_FOV_IS.nii.gz"])
     act_fov_weight_filename = "".join(
-        [actual_subject_filename, "_FOV_IS_weight.nii.gz"]
+        [actual_subject_filename, "_FOV_weight_IS.nii.gz"]
     )
 
     meta_mask_prec = ni.load(prec_fov_mask_filename)
@@ -204,17 +260,6 @@ def find_coefficient_to_correct_intensity(
     gmm.fit(actual_arr_filtered.reshape((-1, 1)))
     gmm2.fit(precedent_arr_filtered.reshape((-1, 1)))
     return gmm2.means_.flatten().max() / gmm.means_.flatten().max()
-
-
-def calcul_weight_FOVs(fov_mapping_filename: str | os.PathLike) -> None:
-    meta = ni.load(fov_mapping_filename)
-    arr = meta.get_fdata()
-    distance_mapping = nd.distance_transform_edt(arr, meta.header["pixdim"][1])
-    weight_mapping = sigmoid(distance_mapping, 2, 4)
-    ni.save(
-        ni.Nifti1Image(weight_mapping, meta.affine, meta.header),
-        fov_mapping_filename.replace(".nii.gz", "_weight.nii.gz"),
-    )
 
 
 def parse_command_line(argv):
