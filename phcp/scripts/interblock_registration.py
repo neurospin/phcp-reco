@@ -5,10 +5,11 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+import ants
 import nibabel as ni
 import numpy as np
 import scipy.ndimage as nd
-from scipy.ndimage import map_coordinates
+from scipy.ndimage import center_of_mass, map_coordinates
 
 logger = logging.getLogger(__name__)
 
@@ -235,6 +236,75 @@ def projection(
     ni.save(ni.Nifti1Image(res, meta.affine, meta.header), output_filename)
 
 
+def extract_centroids(seg_img_path):
+    meta = ni.load(seg_img_path)
+    arr = meta.get_fdata()
+    labels = np.unique(arr)[1:]
+    logger.info(labels)
+    centroid_voxel = [center_of_mass(arr == el) for el in labels]
+    return np.array(centroid_voxel), meta
+
+
+def run_tps_interpolation(
+    ref_7T_filename: str | Path,
+    hr_filename: str | Path,
+    reconstructed_block_filename: str | Path,
+    output_filename: str | Path,
+) -> None:
+    fixed_ants = ants.image_read(ref_7T_filename)
+    moving_ants = ants.image_read(hr_filename)
+
+    logger.info("Extraction of the centroid for landmarks in fixed space")
+    fixed_centroid, meta_fixed = extract_centroids(ref_7T_filename)
+
+    liste_centroid = [list(el) for el in fixed_centroid]
+    liste_centroid_phys_ants = np.asarray(
+        [
+            ants.transform_index_to_physical_point(fixed_ants, el)
+            for el in np.int16(liste_centroid)
+        ]
+    )
+
+    landmark_7T_npy_filename = (
+        Path(ref_7T_filename).parent / "Segmentation7T_Landmarks.npy"
+    )
+    np.save(landmark_7T_npy_filename, liste_centroid_phys_ants)
+
+    logger.info("Extraction of the centroid for landmarks in moving space")
+    moving_centroid, meta_moving = extract_centroids(hr_filename)
+
+    liste_centroid = [list(el) for el in moving_centroid]
+    liste_centroid_phys_ants = np.asarray(
+        [
+            ants.transform_index_to_physical_point(moving_ants, el)
+            for el in np.int16(liste_centroid)
+        ]
+    )
+
+    landmark_HR_npy_filename = Path(hr_filename).parent / "SegmentationHR_Landmarks.npy"
+    np.save(landmark_HR_npy_filename, liste_centroid_phys_ants)
+
+    logger.info("TPS interpolation")
+    moving_points_phySpace = np.load(landmark_HR_npy_filename)
+    fixed_points_phySpace = np.load(landmark_7T_npy_filename)
+    tx = ants.landmark_transforms.fit_transform_to_paired_points(
+        moving_points=moving_points_phySpace,
+        fixed_points=fixed_points_phySpace,
+        domain_image=fixed_ants,
+        transform_type="tps",
+        verbose=True,
+    )
+
+    logger.info("Convert and save the warp field in ANTS fomat")
+    tx_field = ants.transform_to_displacement_field(tx, fixed_ants)
+    tx_field.to_file(Path(hr_filename).parent / "Landmark68_TPS0Warp.nii.gz")
+
+    logger.info("Apply the deformation field on the reconstructed block given")
+    img = ants.image_read(reconstructed_block_filename)
+    img2 = tx.apply_to_image(img)
+    ants.image_write(img2, output_filename)
+
+
 def parse_command_line(argv):
     """Parse the script's command line."""
     import argparse
@@ -383,6 +453,26 @@ def parse_command_line(argv):
         )
     )
 
+    # sub parser run TPS interpolation
+    p6 = subparsers.add_parser(
+        "TPS_interp",
+        help="run TPS interpolation and apply on the reconstructed block given",
+    )
+    p6.add_argument(
+        "landmark_ref",
+        help="Filename of the file containing the landmark in the fixed space (7T)",
+    )
+    p6.add_argument(
+        "landmark_HR",
+        help="Filename of the file containing the landmark in the moving space (T2w)",
+    )
+    p6.add_argument("HR_block", help="Filename of the reconstructed block to correct")
+    p6.add_argument("output_filename", help="Filename of HR_block corrected")
+    p6.set_defaults(
+        func=lambda args: run_tps_interpolation(
+            args.landmark_ref, args.landmark_HR, args.HR_block, args.output_filename
+        )
+    )
     args = parser.parse_args()
     return args
 
