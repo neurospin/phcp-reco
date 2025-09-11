@@ -7,8 +7,8 @@ title: >-
   phcp-reco: processing scripts for Prenatal Human
   Connectome Patterns
 message: >-
-  If you use this software, please cite it using the
-  metadata from this file.
+  If you use this software, please cite the data descriptor
+  for the p-HCP dataset (see preferred-citation).
 type: software
 authors:
   - given-names: Lucas
@@ -51,6 +51,12 @@ identifiers:
     description: >-
       The DOI of the dataset for which these scripts were
       developed
+  - type: url
+    value: >-
+      https://search.kg.ebrains.eu/instances/233a4fb7-4a26-4fcd-8f0a-d85aeb2a21ae
+    description: >-
+      The URL of the dataset for which these scripts were
+      developed
 repository-code: 'https://github.com/neurospin/phcp-reco'
 abstract: >-
   Reconstruction scripts for post-mortem multi-quantitative
@@ -73,15 +79,16 @@ keywords:
 license: CECILL-B
 preferred-citation:
   title: >-
-    Multimodal imaging of human fetal brain development
-    at the mesoscopic scale using 11.7 T ex vivo MRI
+    Multimodal imaging of human fetal brain development at the mesoscopic scale
+    using 11.7 T ex vivo MRI
   type: article
   status: preprint
   journal: bioRxiv
   license: CC-BY-4.0
   languages:
     - en
-  date-published: "2025-09-08"
+  year: 2025
+  date-published: '2025-09-08'
   doi: 10.1101/2025.09.08.669657
   authors:
     - family-names: Arcamone
