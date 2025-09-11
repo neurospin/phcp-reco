@@ -4,6 +4,17 @@
 # phcp-reco
 Reconstruction scripts for post-mortem multi-quantitative fetal brain MRI at 11.7 teslas
 
+## The p-HCP dataset
+
+This repository contains the scripts that were used for preparing the p-HCP dataset:
+
+> 🗃️ Arcamone, L. et al. Multimodal imaging of human fetal brain development at the mesoscopic scale using 11.7 T ex vivo MRI (v1). EBRAINS https://doi.org/10.25493/X3K8-Y9W (2025).
+
+These scripts implement the data processing described in the following article, please refer to it for a description of the methods implemented here. Also, please cite it if you use these scripts for an academic publication:
+
+> 📄 Arcamone, L. et al. Multimodal imaging of human fetal brain development at the mesoscopic scale using 11.7 T ex vivo MRI. bioRxiv. Preprint at https://doi.org/10.1101/2025.09.08.669657 (2025).
+
+
 ## Installation
 
 Dependencies:
