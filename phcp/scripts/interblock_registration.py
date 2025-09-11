@@ -307,6 +307,7 @@ def parse_command_line(argv):
         )
     )
 
+    # sub parser back projection
     p4 = subparsers.add_parser(
         "backproj", help="Project back the intensity in the 3D space"
     )
@@ -349,8 +350,9 @@ def parse_command_line(argv):
         )
     )
 
+    # sub parser intensity extraction
     p5 = subparsers.add_parser(
-        "backproj",
+        "project",
         help="Project in the space of filename the binary cutting surface segmentation in the estimated plane",
     )
     p5.add_argument(
