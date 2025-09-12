@@ -126,6 +126,7 @@ def back_proj(
     usexy: bool,
     useyz: bool,
 ) -> None:
+    logger.info("Load data")
     meta = ni.load(block_filename)
     arr = meta.get_fdata()
 
@@ -143,6 +144,7 @@ def back_proj(
     # Map the modified 2D plane data back to 3D space
     modified_3d_plane = np.zeros_like(arr)
 
+    logger.info("Fill 3D space")
     if usexz:
         x = np.linspace(0, x_dim - 1, x_dim)
         z = np.linspace(0, z_dim - 1, z_dim)
@@ -184,7 +186,7 @@ def back_proj(
                 x, y, z = int(xx[i, j]), int(yy[i, j]), int(zz[i, j])
                 if 0 <= x < x_dim and 0 <= y < y_dim and 0 <= z < z_dim:
                     modified_3d_plane[x, y, z] = modified_plane_2d_image[i, j]
-
+    logger.info("Save 3D file")
     ni.save(
         ni.Nifti1Image(modified_3d_plane, meta.affine, meta.header), output_filename
     )
@@ -447,7 +449,7 @@ def parse_command_line(argv):
         required=True,
         help='Normal vector (nx ny nz). WARNING: if you have negative values, you must enclose the value in quotation marks and leave a space at the beginning (e.g. " -2.8456e-09")',
     )
-    p4.set_defaults(
+    p5.set_defaults(
         func=lambda args: projection(
             args.input_filename, args.output_filename, args.centroid, args.normal
         )
