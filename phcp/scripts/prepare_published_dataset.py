@@ -153,7 +153,7 @@ def encode_image(
         if "expected_shape" in geometry_dict:
             expected_shape = geometry_dict["expected_shape"]
             shape = img.header.get_data_shape()
-            if not numpy.array_equiv(shape, expected_shape):
+            if not numpy.array_equiv(shape[:3], expected_shape):
                 logger.error(
                     "Skipping image with unexpected shape %s (expected %s)",
                     shape,
@@ -186,8 +186,15 @@ def encode_image(
                     img.affine,
                 )
                 return
-            voxel_size = numpy.linalg.norm(affine[:3, :3], axis=0)
-            if not numpy.allclose(voxel_size, img.header.get_zooms(), rtol=1e-4):
+            voxel_size = numpy.concatenate(
+                [
+                    numpy.linalg.norm(affine[:3, :3], axis=0),
+                    img.header.get_zooms()[3:],
+                ]
+            )
+            if not numpy.allclose(
+                voxel_size[:3], img.header.get_zooms()[:3], rtol=1e-4
+            ):
                 logger.error(
                     "Refusing to override the voxel size, "
                     "because it does not match the recorded voxel size:\n%s",
