@@ -459,11 +459,13 @@ derivatives/gkg-Pipeline/
 
 #### Usage
 
+<!-- TODO conversion of Nifti into ima -->
+
 ```shell
 phcp-dffusion-pipeline \
     --subjectJsonFileName fov/derivatives/gkg-Pipeline/PreprocessingDescriptions/sub-${sub}.json \
     --taskJsonFileName fov/derivatives/gkg-Pipeline/GkgPipelineDescriptions/tasks.json \
-    --gkgpipelineJsonFilename fov/derivatives/GkgPipelineDescriptions/GkgPipeline_description_${sub}.json\
+    --gkgpipelineJsonFilename fov/derivatives/gkg-Pipeline/GkgPipelineDescriptions/GkgPipeline_description_${sub}.json\
     --outputDirectory fov/derivatives/gkg-Pipeline/
 ```
 
