@@ -161,8 +161,7 @@ The `phcp-bruker-preprocessing` script uses a few JSON files as configuration. Y
 ```
 derivatives/gkg-Pipeline/PreprocessingDescriptions
 ├── sub-{subjectID}
-│   ├── RG_description.json
-│   └── sub-{subjectID}_ses-{sessionID}_description.json
+│   └── RG_description.json
 └── sub-{subjectID}.json
 ```
 
@@ -175,15 +174,6 @@ derivatives/gkg-Pipeline/PreprocessingDescriptions
     "b8000",
     "VFA"
   ]
-}
-```
-- `sub-{subjectID}_ses-{sessionID}_description.json` contains the list of Bruker scan numbers associated with each run of the segmented diffusion, for example::
-
-```json
-{
-  "b1500": [97, 98],
-  "b4500": [91, 92, 93, 94, 95, 96],
-  "b8000": [82, 83, 84, 85, 86, 87, 88, 89, 90]
 }
 ```
 

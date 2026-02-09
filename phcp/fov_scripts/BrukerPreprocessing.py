@@ -74,47 +74,35 @@ def print_message(message):
 
 # Creates bvec and bvac files in 'rawdata' storage space
 # from files output from MRI console (DICOM)
-def runBvecAndBvalWriter(
-    SourceDataDirectory, RawDataDirecctory, Subject, Session, DescriptionFilename
-):
-    with open(DescriptionFilename) as p:
-        DescriptionFile = json.load(p)
+def runBvecAndBvalWriter(SourceDataDirectory, RawDataDirecctory, Subject, Session):
+    for dwi_json_filename in glob.iglob(
+        os.path.join(RawDataDirecctory, Subject, Session, "dwi", "*_dwi.json")
+    ):
+        with open(dwi_json_filename) as f:
+            json_metadata = json.load(f)
+        series_number = json_metadata["SeriesNumber"] // 10000
 
-    for bvalue in DescriptionFile:
-        for compteur in range(len(DescriptionFile[bvalue])):
-            # Dicom data are stored with a BIDS-like names (sub / ses)
-            DiffDirectory = os.path.join(
-                SourceDataDirectory,
-                Subject,
-                Session,
-                str(DescriptionFile[bvalue][compteur]),
-            )
-            DiffMethod = os.path.join(DiffDirectory, "method")
-            DiffAcqp = os.path.join(DiffDirectory, "acqp")
-            DiffVisu = os.path.join(DiffDirectory, "visu_pars")
+        DiffDirectory = os.path.join(
+            SourceDataDirectory,
+            Subject,
+            Session,
+            str(series_number),
+        )
+        DiffMethod = os.path.join(DiffDirectory, "method")
+        DiffAcqp = os.path.join(DiffDirectory, "acqp")
+        DiffVisu = os.path.join(DiffDirectory, "visu_pars")
 
-            Parser = BrukerInformationParser.BrukerInformationParser(
-                DiffMethod, DiffAcqp, DiffVisu, False
-            )
+        Parser = BrukerInformationParser.BrukerInformationParser(
+            DiffMethod, DiffAcqp, DiffVisu, False
+        )
 
-            RawdataDirectorySaver = os.path.join(
-                RawDataDirecctory, Subject, Session, "dwi"
-            )
-            FileName = (
-                Subject
-                + "_"
-                + Session
-                + "_acq-"
-                + bvalue
-                + "_run-"
-                + str(compteur + 1)
-                + "_dwi"
-            )
+        RawdataDirectorySaver = os.path.dirname(dwi_json_filename)
+        FileName = os.path.splitext(os.path.basename(dwi_json_filename))[0]
 
-            Parser.saveBvecAndBval(
-                os.path.join(RawdataDirectorySaver, FileName + ".bvec"),
-                os.path.join(RawdataDirectorySaver, FileName + ".bval"),
-            )
+        Parser.saveBvecAndBval(
+            os.path.join(RawdataDirectorySaver, FileName + ".bvec"),
+            os.path.join(RawdataDirectorySaver, FileName + ".bval"),
+        )
     return None
 
 
@@ -480,13 +468,6 @@ def bruker_preprocessing(
 
             Id = subject + "_" + session
             if is_bvalue(SubSesKeyModalityValue_dict[Id]):
-                BvalueKeyNumberFileValue_json = os.path.join(
-                    DescriptionsDirectory, subject + "_" + session + "_description.json"
-                )
-
-                with open(BvalueKeyNumberFileValue_json) as p:
-                    BvalueKeyNumberFileValue_dict = json.load(p)
-
                 print_message("Run BvecAndBvalWriter")
 
                 runBvecAndBvalWriter(
@@ -494,13 +475,23 @@ def bruker_preprocessing(
                     RawdataDirectory,
                     subject,
                     session,
-                    BvalueKeyNumberFileValue_json,
                 )
 
-                for bvalue in BvalueKeyNumberFileValue_dict:
-                    SessionDirectory = os.path.join(RawdataDirectory, subject, session)
-                    DwiDirectory = os.path.join(SessionDirectory, "dwi")
+                SessionDirectory = os.path.join(RawdataDirectory, subject, session)
+                DwiDirectory = os.path.join(SessionDirectory, "dwi")
 
+                bvalues = set()
+                for dwi_json_filename in glob.iglob(
+                    os.path.join(DwiDirectory, "*_dwi.json")
+                ):
+                    match = re.search(
+                        "_acq-([^_]+)_", os.path.basename(dwi_json_filename)
+                    )
+                    assert match is not None
+                    bvalue = match.group(1)
+                    bvalues.add(bvalue)
+
+                for bvalue in sorted(bvalues):
                     if not os.path.exists(
                         os.path.join(
                             DerivativesDirectory,
