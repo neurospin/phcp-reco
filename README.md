@@ -188,7 +188,7 @@ Additionally, the “subject file”, whose name is free but suggested to be in 
 #### Usage
 
 ```shell
-phcp-brucker-preprocessing \
+phcp-bruker-preprocessing \
     --sourcedata fov/sourcedata \
     --rawdata fov/headerfliprawdata \
     --derivatives fov/derivatives \
