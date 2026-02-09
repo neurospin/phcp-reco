@@ -1,0 +1,1861 @@
+{
+  "dcm2niixOptions": "-v 1 -b y -ba y -z y -i y",
+  "descriptions": [
+    {
+      "datatype": "anat",
+      "suffix": "T2w",
+      "criteria": {
+        "ProtocolName": "ANAT100mu"
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "T2w",
+      "custom_entities": "acq-DummyScan",
+      "criteria": {
+        "SeriesDescription": "DummyScan - 1b0"
+      }
+    },
+    {
+      "datatype": "fmap",
+      "suffix": "TB1AFI",
+      "criteria": {
+        "SeriesDescription": "afi_FLASH*"
+      }
+    },
+    {
+      "datatype": "fmap",
+      "suffix": "TB1DAM",
+      "custom_entities": "flip-30",
+      "criteria": {
+        "SeriesDescription": "FLASH_B1MAP_*",
+        "FlipAngle": 30
+      }
+    },
+    {
+      "datatype": "fmap",
+      "suffix": "TB1DAM",
+      "custom_entities": "flip-60",
+      "criteria": {
+        "SeriesDescription": "FLASH_B1MAP_*",
+        "FlipAngle": 60
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-020",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 2
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-030",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 3
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-035",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 3.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-040",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 4
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-045",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 4.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-050",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-055",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 5.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-060",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 6
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-065",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 6.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-070",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 7
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-075",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 7.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-080",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 8
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-085",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 8.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-090",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 9
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-095",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 9.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-100",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 10
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-105",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 10.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-110",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 11
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-115",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 11.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-120",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 12
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-125",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 12.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-130",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 13
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-135",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 13.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-140",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 14
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-145",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 14.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-150",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 15
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-155",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 15.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-160",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 16
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-165",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 16.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-170",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 17
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-175",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 17.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-180",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 18
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-185",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 18.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-190",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 19
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-195",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 19.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-200",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 20
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-205",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 20.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-210",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 21
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-215",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 21.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-220",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 22
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-225",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 22.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-230",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 23
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-235",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 23.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-240",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 24
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-245",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 24.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-250",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 25
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-255",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 25.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-260",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 26
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-265",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 26.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-270",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 27
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-275",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 27.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-280",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 28
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-285",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 28.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-290",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 29
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-295",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 29.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-300",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 30
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-310",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 31
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-315",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 31.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-320",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 32
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-330",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 33
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-340",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 34
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-345",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 34.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-350",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 35
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-360",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 36
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-370",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 37
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-375",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 37.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-380",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 38
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-390",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 39
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-400",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 40
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-405",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 40.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-410",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 41
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-420",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 42
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-430",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 43
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-435",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 43.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-440",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 44
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-450",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 45
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-460",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 46
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-470",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 47
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-480",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 48
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-490",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 49
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-500",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 50
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-510",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 51
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-520",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 52
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-530",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 53
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-540",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 54
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-550",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 55
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-560",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 56
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-570",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 57
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-580",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 58
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-590",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 59
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-600",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 60
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-605",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 60.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-610",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 61
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-615",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 61.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-620",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 62
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-625",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 62.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-630",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 63
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-635",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 63.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-640",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 64
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-645",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 64.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-650",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 65
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-655",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 65.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-660",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 66
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-665",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 66.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-670",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 67
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-675",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 67.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-680",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 68
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-685",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 68.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-690",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 69
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-695",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 69.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-700",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 70
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-705",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 70.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-710",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 71
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-715",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 71.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-720",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 72
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-725",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 72.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-730",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 73
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-735",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 73.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-740",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 74
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-745",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 74.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-750",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 75
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-755",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 75.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-760",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 76
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-765",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 76.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-770",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 77
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-775",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 77.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-780",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 78
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-785",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 78.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-790",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 79
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-795",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 79.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-800",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 80
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-805",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 80.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-810",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 81
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-815",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 81.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-820",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 82
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-825",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 82.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-830",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 83
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-835",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 83.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-840",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 84
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-845",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 84.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-850",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 85
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-855",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 85.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-860",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 86
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-865",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 86.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-870",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 87
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-875",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 87.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-880",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 88
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-885",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 88.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-890",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 89
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-895",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 89.5
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "VFA",
+      "custom_entities": "flip-900",
+      "criteria": {
+        "SeriesDescription": "FLASH_FA*_TR*",
+        "FlipAngle": 90
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MEGRE",
+      "custom_entities": "echo-01",
+      "criteria": {
+        "SeriesDescription": "T2starmap MGE 100um",
+        "EchoTime": 0.00522446
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MEGRE",
+      "custom_entities": "echo-02",
+      "criteria": {
+        "SeriesDescription": "T2starmap MGE 100um",
+        "EchoTime": 0.0137243
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MEGRE",
+      "custom_entities": "echo-03",
+      "criteria": {
+        "SeriesDescription": "T2starmap MGE 100um",
+        "EchoTime": 0.0222242
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MEGRE",
+      "custom_entities": "echo-04",
+      "criteria": {
+        "SeriesDescription": "T2starmap MGE 100um",
+        "EchoTime": 0.0307241
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MEGRE",
+      "custom_entities": "echo-05",
+      "criteria": {
+        "SeriesDescription": "T2starmap MGE 100um",
+        "EchoTime": 0.039224
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MEGRE",
+      "custom_entities": "echo-06",
+      "criteria": {
+        "SeriesDescription": "T2starmap MGE 100um",
+        "EchoTime": 0.0477239
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MEGRE",
+      "custom_entities": "echo-07",
+      "criteria": {
+        "SeriesDescription": "T2starmap MGE 100um",
+        "EchoTime": 0.0562237
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MEGRE",
+      "custom_entities": "echo-08",
+      "criteria": {
+        "SeriesDescription": "T2starmap MGE 100um",
+        "EchoTime": 0.0647236
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MEGRE",
+      "custom_entities": "echo-09",
+      "criteria": {
+        "SeriesDescription": "T2starmap MGE 100um",
+        "EchoTime": 0.0732235
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MEGRE",
+      "custom_entities": "echo-10",
+      "criteria": {
+        "SeriesDescription": "T2starmap MGE 100um",
+        "EchoTime": 0.0817234
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-01",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.01
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-02",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.02
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-03",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.03
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-04",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.04
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-05",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.05
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-06",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.06
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-07",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.07
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-08",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.08
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-09",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.09
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-10",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.10
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-11",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.11
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-12",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.12
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-13",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.13
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-14",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.14
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-15",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.15
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-16",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.16
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-17",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.17
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-18",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.18
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-19",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.19
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "MESE",
+      "custom_entities": "echo-20",
+      "criteria": {
+        "SeriesDescription": "MSME_200um",
+        "EchoTime": 0.20
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b1500_run-1",
+      "criteria": {
+        "SeriesDescription": "b1 1500 25dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b1500"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b1500_run-2",
+      "criteria": {
+        "SeriesDescription": "b2 1500 25dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b1500"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b4500_run-1",
+      "criteria": {
+        "SeriesDescription": "b1 4500 60dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b4500"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b4500_run-2",
+      "criteria": {
+        "SeriesDescription": "b2 4500 60dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b4500"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b4500_run-3",
+      "criteria": {
+        "SeriesDescription": "b3 4500 60dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b4500"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b4500_run-4",
+      "criteria": {
+        "SeriesDescription": "b4 4500 60dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b4500"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b4500_run-5",
+      "criteria": {
+        "SeriesDescription": "b5 4500 60dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b4500"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b4500_run-6",
+      "criteria": {
+        "SeriesDescription": "b6 4500 60dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b4500"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b8000_run-1",
+      "criteria": {
+        "SeriesDescription": "b1 8000 90dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b8000"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b8000_run-2",
+      "criteria": {
+        "SeriesDescription": "b2 8000 90dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b8000"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b8000_run-3",
+      "criteria": {
+        "SeriesDescription": "b3 8000 90dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b8000"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b8000_run-4",
+      "criteria": {
+        "SeriesDescription": "b4 8000 90dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b8000"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b8000_run-5",
+      "criteria": {
+        "SeriesDescription": "b5 8000 90dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b8000"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b8000_run-6",
+      "criteria": {
+        "SeriesDescription": "b6 8000 90dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b8000"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b8000_run-7",
+      "criteria": {
+        "SeriesDescription": "b7 8000 90dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b8000"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b8000_run-8",
+      "criteria": {
+        "SeriesDescription": "b8 8000 90dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b8000"
+      }
+    },
+    {
+      "datatype": "dwi",
+      "suffix": "dwi",
+      "custom_entities": "acq-b8000_run-9",
+      "criteria": {
+        "SeriesDescription": "b9 8000 90dir"
+      },
+      "sidecarChanges": {
+        "MultipartID": "b8000"
+      }
+    }
+  ]
+}

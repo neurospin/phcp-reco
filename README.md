@@ -23,6 +23,8 @@ Dependencies:
 - [FSL](https://fsl.fmrib.ox.ac.uk/) (tested with version 6.0.7.13)
 - [ANTS](https://github.com/ANTsX/ANTs) (tested with version 2.5.4)
 - [Gkg](https://framagit.org/cpoupon/gkg) (locally distributed Singularity containers)
+- [dcm2bids](https://github.com/unfmontreal/Dcm2Bids) (tested with version 3.2.0)
+- [dcm2niix](https://github.com/rordenlab/dcm2niix) (tested with version 1.0.20250505)
 
 ```shell
 git clone https://github.com/neurospin/phcp-reco.git
@@ -65,10 +67,18 @@ fov/sourcedata
                         └── MRIm*.dcm
 ```
 
-The DICOM files are converted to BIDS format. TODO: document the conversion process
+The majority of the DICOM files are converted to BIDS format using `dcm2bids`. Configuration files are included in the `dcm2bids` directory for the 11.7 T, 7 T, and in-situ scans.
 
-- dcm2niix
-- Parse Bruker raw data and write bvec, bval, ReceiverGain
+```shell
+dcm2bids \
+    -p ${sub} \
+    -s ${ses} \
+    -c code/phcp-reco/dcm2bids/dcm2bids_11.7T.json \
+    -o rawdata/ \
+    -d sourcedata/sub-${sub}/ses-${ses}/*/pdata/1/dicom/
+```
+
+
 
 ### Raw data
 

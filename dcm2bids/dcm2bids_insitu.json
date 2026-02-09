@@ -1,0 +1,66 @@
+{
+  "descriptions": [
+    {
+      "datatype": "anat",
+      "suffix": "T2w",
+      "custom_entities": "acq-SPAIR",
+      "criteria": {
+        "SeriesDescription": "*T2 SPAIR HR*"
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "T2w",
+      "custom_entities": "acq-DRIVE",
+      "criteria": {
+        "SeriesDescription": "T2W_DRIVE*"
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "T2w",
+      "custom_entities": "acq-HR",
+      "criteria": {
+        "SeriesDescription": "3D CORO T2 HR*"
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "T1w",
+      "criteria": {
+        "SeriesDescription": "*T1 HR*"
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "T1w",
+      "custom_entities": "acq-SagGAUCHE",
+      "criteria": {
+        "SeriesDescription": "SAG GAUCHE"
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "T1w",
+      "custom_entities": "acq-SagDROITE",
+      "criteria": {
+        "SeriesDescription": "SAG DROITE"
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "T2w",
+      "custom_entities": "acq-SagSPAIR",
+      "criteria": {
+        "SeriesDescription": "V3D SAG T2 SPAIR HR 250mm"
+      }
+    },
+    {
+      "datatype": "anat",
+      "suffix": "Swi",
+      "criteria": {
+        "SeriesDescription": "3D SWI 6TE"
+      }
+    }
+  ]
+}
