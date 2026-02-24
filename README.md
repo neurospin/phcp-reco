@@ -642,8 +642,23 @@ You should check the quality of the reconstructed block at this stage, and make 
 
 ### Inter-block registration
 
-The registration strategy is described in the data paper, but the details of registration can differ for different specimens. As a result, no registration scripts are distributed at the moment.
+The inter-block registration process is described in detail in the data descriptor. It comprises several steps that can be applied in a different order if necessary. Thus, the code associated with this step consists of a “toolbox” rather than a complete pipeline.
 
+The tools are integrated into the `interblock_registration.py` code and can be called using the following command:
+```shell
+# Overview of the tools available
+phcp-interblock-tools -h
+
+# Selction of the tools
+phcp-interblock-tools name_tool -h
+```
+The following tools can be called:
+1. `extract_hull`: Create the shell of a segmentation by applying a combination of dilation and erosion and subtracting the results. This tool is useful to help for extracting the raw cut surface.
+2. `run_svd`: Returns the normal vector and centroid of the estimated mean plane calculated on the raw cut surface. This allows the plane equation to be reconstructed in order to project the raw surface.
+3. `project`: Project voxels from the raw surface orthogonally in the given equation plane. **inputs**: NifTI file of the manual segmentation of the cut surface, output filename, centroïd coordinates, normal vector.  **output**: NifTI file of the raw cut surface projected on the plane.
+4. `extract_intensity`: Create a 2D NifTI image of the voxels within the estimated plane. **inputs**: NifTI file of the reference 3D space, output filename, centroïd coordinates, normal vector, in which direction to project the voxels (--usexz, --usexy, --useyz).
+5. `backproj`: Create a 3D NifTI image from a 2D image by projecting it within the given equation plane. **inputs**: NifTI file of the reference 3D space, NifTI file of the 2D image, output filename, centroïd coordinates, normal vector, in which direction to project he voxels (--usexz, --usexy, --useyz). **output**: 3D NifTI file of the 2D image projected in the plane according to the given equation.
+6. `TPS_interp`: Create a deformation field from two points cloud of landmarks by applying TPS interpolation. **inputs**: NifTI image of the landmarks in the reference image (7T), NifTI image of the landmarks in the reconstructed block (11.7T), NifTI image of the space of reference, output filename. **output**: Deformation field (NifTI).
 
 ### Concatenation of transformations (optional)
 
