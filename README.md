@@ -487,16 +487,6 @@ fov/derivatives/gkg-Pipeline/
             └── ...
 ```
 
-### Outputs of the field-of-view processing pipeline
-
-```
-fov/derivatives/fov-reconstructed
-└── sub-{subjectID}
-    └── ses-{sessionID}
-        └── fmap
-            └── sub-{subjectID}_ses-{sessionID}_TB1map.nii.gz
-```
-
 
 ## The reconstruction pipeline
 
