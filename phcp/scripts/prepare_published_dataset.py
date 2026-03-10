@@ -61,6 +61,20 @@ def convert_to_scaled_encoding(img, dtype, slope, inter, reset_scaling=False):
     return new_img
 
 
+def convert_to_rgb24_encoding(img):
+    shape = img.header.get_data_shape()
+    assert len(shape) >= 5
+    assert shape[4] == 3
+    img = convert_to_scaled_encoding(img, "uint8", 1.0, 0.0)
+    new_header = img.header.copy()
+    new_header.set_data_dtype("RGB")
+    new_img = nibabel.Nifti1Image(img.dataobj, img.affine, new_header)
+    new_img.dataobj["R"][...] = img.dataobj[:, :, :, :, 0, ...]
+    new_img.dataobj["G"][...] = img.dataobj[:, :, :, :, 1, ...]
+    new_img.dataobj["B"][...] = img.dataobj[:, :, :, :, 2, ...]
+    return new_img
+
+
 def deidentify_json(json_dict: dict):
     # Remove unimportant or possibly identifying information
     json_dict.pop("DeviceSerialNumber", None)
@@ -205,6 +219,8 @@ def encode_image(
             img.header.set_qform(affine, code="aligned")
             img.header.set_sform(affine, code="aligned")
 
+        if encoding_dict.get("dtype") == "RGB":
+            img = convert_to_rgb24_encoding(img)
         if (
             "dtype" in encoding_dict
             or "slope" in encoding_dict
