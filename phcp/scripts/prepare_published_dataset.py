@@ -226,6 +226,10 @@ def encode_image(
 
         if encoding_dict.get("dtype") == "RGB":
             img = convert_to_rgb24_encoding(img)
+        if encoding_dict.get("mask"):
+            # ensure 1 within mask, no other non-zero value, as per BIDS
+            # https://bids-specification.readthedocs.io/en/v1.10.0/derivatives/imaging.html#masks
+            img = nibabel.Nifti1Image(img.get_fdata() != 0, img.affine, img.header)
         if (
             "dtype" in encoding_dict
             or "slope" in encoding_dict
