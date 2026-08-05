@@ -14,6 +14,11 @@ import yaml
 logger = logging.getLogger(__name__)
 
 
+# We want maximum compression for distributing a dataset.
+# The default compression level of Nibabel is low!
+nibabel.openers.Opener.default_compresslevel = 9
+
+
 def nibabel_orient_as_RAS(
     img: nibabel.spatialimages.SpatialImage,
 ) -> nibabel.spatialimages.SpatialImage:
@@ -155,7 +160,7 @@ def encode_image(
         logger.info("encoding %s into %s", input_full_path, output_full_path)
         output_full_path.parent.mkdir(parents=True, exist_ok=True)
 
-        encoding_dict = config["encodings"].get(image_dict.get("encoding"), {})
+        encoding_dict = config["encodings"][image_dict["encoding"]]
         geometry_dict = config["geometries"].get(
             image_dict.get("geometry", "default"), {}
         )
@@ -229,8 +234,8 @@ def encode_image(
             img = convert_to_scaled_encoding(
                 img,
                 numpy.dtype(encoding_dict["dtype"]),
-                float(encoding_dict["slope"]),
-                float(encoding_dict["inter"]),
+                float(encoding_dict.get("slope", 1.0)),
+                float(encoding_dict.get("inter", 0.0)),
                 reset_scaling=encoding_dict.get("reset_scaling", False),
             )
         image_dict.setdefault("intent", encoding_dict.get("intent", 0))
