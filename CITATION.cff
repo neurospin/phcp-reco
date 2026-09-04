@@ -49,14 +49,14 @@ identifiers:
   - type: doi
     value: 10.25493/X3K8-Y9W
     description: >-
-      The DOI of the dataset for which these scripts were
-      developed
+      The DOI of the dataset (version 1) for which these
+      scripts were developed
   - type: url
     value: >-
       https://search.kg.ebrains.eu/instances/233a4fb7-4a26-4fcd-8f0a-d85aeb2a21ae
     description: >-
-      The URL of the dataset for which these scripts were
-      developed
+      The URL of the dataset (version 1) for which these
+      scripts were developed
 repository-code: 'https://github.com/neurospin/phcp-reco'
 abstract: >-
   Reconstruction scripts for post-mortem multi-quantitative
