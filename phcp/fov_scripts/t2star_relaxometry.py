@@ -52,23 +52,23 @@ def createCommand_T2starSingleCompartmentRelaxometryMapper(
         "-optimizerParameters",
         "10000",  # <P7> : MCMC maximum iteration count
         "-scalarParameters",
-        "0.3",
+        "0.3",  # initial proton density
         "-scalarParameters",
-        "30",
+        "30",  # initial quantitative T2* in ms
         "-scalarParameters",
-        "0",
+        "0",  # lower proton density
         "-scalarParameters",
-        "0",
+        "0",  # lower quantitative T2* in ms
         "-scalarParameters",
-        "8",
+        "8",  # upper proton density
         "-scalarParameters",
-        "100",
+        "100",  # upper quantitative T2* in ms
         "-scalarParameters",
-        "1",
+        "1",  # delta proton density
         "-scalarParameters",
-        "10",
+        "10",  # delta quantitative T2* in ms
         "-scalarParameters",
-        "2",
+        "2",  # noise standard deviation of input volume
         "-stringParameters",
         fileNameTEValues,
         "-op",

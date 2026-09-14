@@ -78,37 +78,37 @@ def createCommand_T1SingleCompartmentRelaxometryMapper(
         "-t",
         "t1-mapping-vfa-spgr",
         "-optimizerParameters",
-        "50000",
+        "50000",  # <P1> : NLP maximum iteration count
         "-optimizerParameters",
-        "0.001",
+        "0.001",  # <P2> : NLP test size
         "-optimizerParameters",
-        "1",
+        "1",  # <P3> : 0->do not apply MCMC 1->apply MCMC
         "-optimizerParameters",
-        "200",
+        "200",  # <P4> : MCMC burnin count
         "-optimizerParameters",
-        "100",
+        "100",  # <P5> : MCMC sample count
         "-optimizerParameters",
-        "10",
+        "10",  # <P6> : MCMC interval count
         "-optimizerParameters",
-        "1000",
+        "1000",  # <P7> : MCMC maximum iteration count\
         "-scalarParameters",
-        "5",
+        "5",  # initial proton density
         "-scalarParameters",
-        "50",
+        "50",  # initial quantitative T1 in ms
         "-scalarParameters",
-        "0",
+        "0",  # lower proton density
         "-scalarParameters",
-        "5",
+        "5",  # lower quantitative T1 in ms
         "-scalarParameters",
-        "50",
+        "50",  # upper proton density
         "-scalarParameters",
-        "500",
+        "500",  # upper quantitative T1 in ms
         "-scalarParameters",
-        "1",
+        "1",  # delta proton density
         "-scalarParameters",
-        "20",
+        "20",  # delta quantitative T1 in ms
         "-scalarParameters",
-        "0.002",
+        "0.002",  # noise standard deviation of input volume
         "-stringParameters",
         str(fileNameTRValues),
         "-stringParameters",
