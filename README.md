@@ -248,16 +248,16 @@ fov/headerfliprawdata
 #### Usage
 
 ```shell
-mkdir -p fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap
+mkdir -p fov/derivatives/B1mapping/sub-${sub}/ses-${ses}/fmap
 phcp-fov-afi-b1mapping \
     fov/headerfliprawdata/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1AFI.nii.gz \
-    fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz
+    fov/derivatives/B1mapping/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz
 ```
 
 #### Outputs
 
 ```
-fov/derivatives/fov-reconstructed
+fov/derivatives/B1mapping
 └── sub-{subjectID}
     └── ses-{sessionID}
         └── fmap
@@ -354,7 +354,7 @@ fov/derivatives/RGCorrection
 └── sub-{subjectID}
     └── ses-{sessionID}
         └── sub-{subjectID}_ses-{sessionID}_VFA.nii.gz
-fov/derivatives/fov-reconstructed
+fov/derivatives/B1mapping
 └── sub-{subjectID}
     └── ses-{sessionID}
         └── fmap
@@ -367,7 +367,7 @@ fov/derivatives/fov-reconstructed
 mkdir -p fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials
 cp fov/derivatives/RGCorrection/sub-${sub}/ses-${ses}/sub-${sub}_ses-${ses}_VFA.nii.gz \
    fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials/t1map.nii.gz
-cp fov/derivatives/fov-reconstructed/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz \
+cp fov/derivatives/B1mapping/sub-${sub}/ses-${ses}/fmap/sub-${sub}_ses-${ses}_TB1map.nii.gz \
     fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/01-Materials/b1.nii.gz
 mkdir -p fov/derivatives/T1mapping/sub-${sub}/ses-${ses}/02-Results
 phcp-t1-relaxometry \
