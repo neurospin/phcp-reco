@@ -32,3 +32,8 @@ repos:
     name: check-subject-identifiers
     language: script
     entry: .hooks/check-subject-identifiers.sh
+  - id: check-hardcoded-paths
+    name: check-hardcoded-paths
+    language: script
+    entry: .hooks/check-hardcoded-paths.sh
+    exclude: ^phcp/config\.py$  # hardcoded paths are allowed in config.py
